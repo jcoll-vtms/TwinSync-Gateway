@@ -25,6 +25,15 @@ namespace TwinSync_Gateway
                 await vm.StartIotAsync();
             }
         }
-    }
 
+        protected override async void OnExit(ExitEventArgs e)
+        {
+            base.OnExit(e);
+            // Get the MainWindow and its VM
+            if (Current.MainWindow is MainWindow win && win.DataContext is MainViewModel vm)
+            {
+                await vm.StopIotAsync();
+            }
+        }
+    }
 }

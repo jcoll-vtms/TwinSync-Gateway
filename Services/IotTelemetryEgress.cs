@@ -15,6 +15,9 @@ namespace TwinSync_Gateway.Services
         private CancellationTokenSource? _cts;
         private Task? _pumpTask;
 
+        // Sequence number for telemetry frames (if needed in the future)
+        private long _seq;
+
         public event Action<string>? Log;
 
         public IotTelemetryEgress(IotMqttConnection mqtt, string gatewayId)
@@ -22,6 +25,21 @@ namespace TwinSync_Gateway.Services
             _mqtt = mqtt;
             _gatewayId = gatewayId;
         }
+
+        // Clear the latest telemetry for a robot (e.g., when it disconnects)
+        public void ClearRobot(string robotName)
+        {
+            if (string.IsNullOrWhiteSpace(robotName)) return;
+            lock (_lock) _latestByRobot.Remove(robotName);
+        }
+
+        // Clear all telemetry data (e.g., on shutdown)
+        public void ClearAll()
+        {
+            lock (_lock) _latestByRobot.Clear();
+        }
+
+
 
         public void Start(TimeSpan publishPeriod)
         {
@@ -88,9 +106,12 @@ namespace TwinSync_Gateway.Services
         {
             if (!_mqtt.IsConnected) return;
 
+            var seq = Interlocked.Increment(ref _seq); // temp debug
+
             var topic = $"twinsync/{_gatewayId}/telemetry/{robotName}";
             var payload = new TelemetryOut
             {
+                seq = seq, // temp debug
                 ts = frame.Timestamp.ToUnixTimeMilliseconds(),
                 j = frame.JointsDeg,
                 di = frame.DI != null ? ToStringKeyDict(frame.DI) : null,
@@ -117,6 +138,7 @@ namespace TwinSync_Gateway.Services
 
         private sealed class TelemetryOut
         {
+            public long seq { get; set; } // temp debug
             public long ts { get; set; }
             public double[]? j { get; set; }
             public Dictionary<string, int>? di { get; set; }

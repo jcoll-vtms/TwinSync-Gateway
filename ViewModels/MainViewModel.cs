@@ -107,6 +107,30 @@ namespace TwinSync_Gateway.ViewModels
             _iotEgress.Start(TimeSpan.FromMilliseconds(100)); // 10 Hz
         }
 
+        public async Task StopIotAsync()
+        {
+            // Stop publisher loop first (so no one tries to publish while disconnecting)
+            if (_iotEgress != null)
+            {
+                _iotEgress?.ClearAll();
+                try { await _iotEgress.DisposeAsync(); } catch { }
+                _iotEgress = null;
+            }
+
+            // Ingress is just a router; nothing to dispose (unless you add disposal later)
+            _iotIngress = null;
+
+            // Disconnect the shared MQTT connection last
+            if (_mqtt != null)
+            {
+                try { await _mqtt.DisposeAsync(); } catch { }
+                _mqtt = null;
+            }
+
+            System.Diagnostics.Debug.WriteLine("[IoT] Stopped IoT connection.");
+        }
+
+
 
         private static X509Certificate2 LoadClientCertFromPfx(string pfxPath, string? password)
         {
@@ -163,36 +187,37 @@ namespace TwinSync_Gateway.ViewModels
 
 
             //can remove this once all frame debugging is complete
-            vm.Session.JointsUpdated += joints =>
-                {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        vm.SetJoints(joints);   
-                    });
-                };
+            //vm.Session.JointsUpdated += joints =>
+            //    {
+            //        Application.Current.Dispatcher.Invoke(() =>
+            //        {
+            //            vm.SetJoints(joints);   
+            //        });
+            //    };
 
             vm.Session.TelemetryUpdated += frame =>
             {
-                _iotEgress?.Enqueue(vm.Name, frame);
+                // Only publish to AWS if at least one user is alive for this robot
+                if (vm.Session != null && vm.Session.HasAnyActiveUsers())
+                    _iotEgress?.Enqueue(vm.Name, frame);
+                else
+                    _iotEgress?.ClearRobot(vm.Name);
 
+                // Your existing UI/debug work stays the same
                 System.Diagnostics.Debug.WriteLine(
-                $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
+                    $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    // Keep joints updates (if you want to move to TelemetryFrame later)
                     if (frame.JointsDeg is not null)
                         vm.SetJoints(frame.JointsDeg);
 
-                    // Optional: stash signal dictionaries on the VM for display/logging
                     vm.LastDI = frame.DI;
                     vm.LastGI = frame.GI;
                     vm.LastGO = frame.GO;
-
                     vm.LastTelemetryAt = frame.Timestamp;
                 });
             };
-
 
             vm.Session.StatusChanged += (status, error) =>
             {

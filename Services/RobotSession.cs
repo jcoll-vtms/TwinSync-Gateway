@@ -83,6 +83,12 @@ namespace TwinSync_Gateway.Services
             _transportFactory = transportFactory;
         }
 
+        public bool HasAnyActiveUsers()
+        {
+            lock (_userPlansLock)
+                return _userPlans.Count > 0;
+        }
+
         public void SetUserPlan(string userId, TelemetryPlan plan)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
