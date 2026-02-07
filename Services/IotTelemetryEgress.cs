@@ -11,6 +11,7 @@ namespace TwinSync_Gateway.Services
 
         private readonly object _lock = new();
         private readonly Dictionary<string, TelemetryFrame> _latestByRobot = new();
+        private readonly HashSet<string> _publishEnabled = new(StringComparer.Ordinal);
 
         private CancellationTokenSource? _cts;
         private Task? _pumpTask;
@@ -26,17 +27,40 @@ namespace TwinSync_Gateway.Services
             _gatewayId = gatewayId;
         }
 
+        // Enable/disable publishing for a robot (used for "only publish when users exist")
+        public void SetPublishEnabled(string robotName, bool enabled)
+        {
+            if (string.IsNullOrWhiteSpace(robotName)) return;
+            lock (_lock)
+            {
+                if (enabled) _publishEnabled.Add(robotName);
+                else
+                {
+                    _publishEnabled.Remove(robotName);
+                    _latestByRobot.Remove(robotName); // also drop cached frame so it can't be republished
+                }
+            }
+        }
+
         // Clear the latest telemetry for a robot (e.g., when it disconnects)
         public void ClearRobot(string robotName)
         {
             if (string.IsNullOrWhiteSpace(robotName)) return;
-            lock (_lock) _latestByRobot.Remove(robotName);
+            lock (_lock)
+            {
+                _latestByRobot.Remove(robotName);
+                _publishEnabled.Remove(robotName);
+            }
         }
 
         // Clear all telemetry data (e.g., on shutdown)
         public void ClearAll()
         {
-            lock (_lock) _latestByRobot.Clear();
+            lock (_lock)
+            {
+                _latestByRobot.Clear();
+                _publishEnabled.Clear();
+            }
         }
 
 
@@ -89,7 +113,15 @@ namespace TwinSync_Gateway.Services
 
                     Dictionary<string, TelemetryFrame> snapshot;
                     lock (_lock)
-                        snapshot = new Dictionary<string, TelemetryFrame>(_latestByRobot);
+                    {
+                        // publish only for robots that are currently enabled
+                        snapshot = new Dictionary<string, TelemetryFrame>(_publishEnabled.Count, StringComparer.Ordinal);
+                        foreach (var robot in _publishEnabled)
+                        {
+                            if (_latestByRobot.TryGetValue(robot, out var frame))
+                                snapshot[robot] = frame;
+                        }
+                    }
 
                     foreach (var kvp in snapshot)
                         await PublishOneAsync(kvp.Key, kvp.Value, ct).ConfigureAwait(false);

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Windows;
 using System.Xml.Linq;
 using TwinSync_Gateway.Models;
 using TwinSync_Gateway.Services;
-using System.Security.Cryptography.X509Certificates;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TwinSync_Gateway.ViewModels
 {
@@ -181,6 +182,14 @@ namespace TwinSync_Gateway.ViewModels
                 };
             });
 
+            // IMPORTANT: when the last user drops off (leave / lease timeout),
+            // robot streaming stops, so TelemetryUpdated won't fire again to trigger ClearRobot.
+            // Clear the AWS egress cache immediately on the transition to "no users".
+            vm.Session.ActiveUsersChanged += any =>
+            {
+                _iotEgress?.SetPublishEnabled(vm.Name, any);
+            };
+
             ApplyUserAPlanCommand.RaiseCanExecuteChanged();
             ApplyUserBPlanCommand.RaiseCanExecuteChanged();
             RemoveUserBCommand.RaiseCanExecuteChanged();
@@ -200,14 +209,12 @@ namespace TwinSync_Gateway.ViewModels
                 // Only publish to AWS if at least one user is alive for this robot
                 if (vm.Session != null && vm.Session.HasAnyActiveUsers())
                     _iotEgress?.Enqueue(vm.Name, frame);
-                else
-                    _iotEgress?.ClearRobot(vm.Name);
 
                 // Your existing UI/debug work stays the same
                 System.Diagnostics.Debug.WriteLine(
                     $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
 
-                Application.Current.Dispatcher.Invoke(() =>
+                Application.Current.Dispatcher.BeginInvoke(() =>
                 {
                     if (frame.JointsDeg is not null)
                         vm.SetJoints(frame.JointsDeg);
@@ -232,7 +239,7 @@ namespace TwinSync_Gateway.ViewModels
                     RemoveUserBCommand.RaiseCanExecuteChanged();
                 });
             };
-            
+
 
             try
             {

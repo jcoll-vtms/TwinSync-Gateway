@@ -69,13 +69,14 @@ namespace TwinSync_Gateway.Services
         // Connection-loss signal (set when streaming detects socket death)
         private TaskCompletionSource<bool>? _connectionLostTcs;
 
-        // Auto-resume intent (ON by default)
-        private volatile bool _desiredStreaming = true;
+        // demand-driven: stream only when users exist
+        private volatile bool _desiredStreaming = false;
         private volatile int _streamPeriodMs = 30;
 
         public event Action<RobotStatus, string?>? StatusChanged;
         public event Action<double[]>? JointsUpdated;
         public event Action<TelemetryFrame>? TelemetryUpdated;
+        public event Action<bool>? ActiveUsersChanged;
 
         public RobotSession(RobotConfig config, Func<IRobotTransport> transportFactory)
         {
@@ -83,12 +84,32 @@ namespace TwinSync_Gateway.Services
             _transportFactory = transportFactory;
         }
 
+        // Check if we have any active users (used for streaming demand)
         public bool HasAnyActiveUsers()
         {
             lock (_userPlansLock)
                 return _userPlans.Count > 0;
         }
 
+        // Update streaming demand based on whether we have any active users. If no users, stop streaming to save robot resources.
+        private void UpdateStreamingDemand()
+        {
+            var want = HasAnyActiveUsers();
+
+            // Only react if it actually changed (avoid churn)
+            if (_desiredStreaming == want) return;
+
+            _desiredStreaming = want;
+            ActiveUsersChanged?.Invoke(want);
+
+            // Start/stop streaming without touching the socket.
+            if (want)
+                _ = StartStreamingAsync(_streamPeriodMs);
+            else
+                _ = StopStreamingInternalAsync();
+        }
+
+        // Set or update a user's telemetry plan. This will recompute the union plan and apply it if needed.
         public void SetUserPlan(string userId, TelemetryPlan plan)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
@@ -106,6 +127,7 @@ namespace TwinSync_Gateway.Services
             }
 
             _desiredPlan = ComputeUnionPlan();
+            UpdateStreamingDemand();
 
             // Fire-and-forget apply (safe: guarded by _ioLock + checks)
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
@@ -135,6 +157,7 @@ namespace TwinSync_Gateway.Services
             if (!removed) return;
 
             _desiredPlan = ComputeUnionPlan();
+            UpdateStreamingDemand();
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
         }
 
@@ -154,6 +177,9 @@ namespace TwinSync_Gateway.Services
 
             // Start lease reaper after successful connection (optional cleanup of stale user plans)
             StartLeaseReaper();
+
+            // in case we had user plans before connect, start streaming if needed
+            UpdateStreamingDemand();
         }
 
         public async Task DisconnectAsync()
@@ -193,7 +219,7 @@ namespace TwinSync_Gateway.Services
             _desiredStreaming = true;
             _streamPeriodMs = periodMs;
 
-            // If not connected yet, RunAsync will auto-start streaming afterúú
+            // If we don't have a transport yet, streaming will auto-start in RunAsync after connect, so just return.
             if (_transport == null)
                 return Task.CompletedTask;
 
@@ -295,6 +321,7 @@ namespace TwinSync_Gateway.Services
                 return;
 
             _desiredPlan = ComputeUnionPlan();
+            UpdateStreamingDemand();
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
         }
 
@@ -389,6 +416,7 @@ namespace TwinSync_Gateway.Services
                 if (_streamTask != null)
                     await _streamTask.ConfigureAwait(false);
             }
+            catch (TaskCanceledException) { }
             catch (OperationCanceledException) { }
             catch (IOException) { }
             catch (SocketException) { }

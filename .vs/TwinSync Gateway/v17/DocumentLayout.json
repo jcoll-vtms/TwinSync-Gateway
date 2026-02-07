@@ -11,12 +11,12 @@
       "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\iottelemetryegress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\iotplaningress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\iotplaningress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\robotsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\robotsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\iotplaningress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\iotplaningress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -62,8 +62,7 @@
               "RelativeToolTip": "MainWindow.xaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-07T02:39:42.122Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-07T02:39:42.122Z"
             },
             {
               "$type": "Document",
@@ -75,8 +74,7 @@
               "RelativeToolTip": "App.xaml.cs",
               "ViewState": "AgIAAAsAAAAAAAAAAAAswCUAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-07T01:18:13.147Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-07T01:18:13.147Z"
             },
             {
               "$type": "Document",
@@ -98,7 +96,7 @@
               "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
               "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\ViewModels\\MainViewModel.cs",
               "RelativeToolTip": "ViewModels\\MainViewModel.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAwwHEAAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAM4AAAAAAAAAAAAEwN0AAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-06T20:32:10.392Z",
               "EditorCaption": ""
@@ -117,7 +115,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "IotPlanIngress.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotPlanIngress.cs",
               "RelativeDocumentMoniker": "Services\\IotPlanIngress.cs",
@@ -125,7 +123,19 @@
               "RelativeToolTip": "Services\\IotPlanIngress.cs",
               "ViewState": "AgIAABIAAAAAAAAAAAAkwH8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T02:33:10.689Z",
+              "WhenOpened": "2026-02-06T02:33:10.689Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "RobotSession.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
+              "RelativeDocumentMoniker": "Services\\RobotSession.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
+              "RelativeToolTip": "Services\\RobotSession.cs",
+              "ViewState": "AgIAADwAAAAAAAAAAAAEwE0AAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T20:19:33.147Z",
               "EditorCaption": ""
             },
             {
@@ -136,7 +146,7 @@
               "RelativeDocumentMoniker": "Services\\IotTelemetryEgress.cs",
               "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotTelemetryEgress.cs",
               "RelativeToolTip": "Services\\IotTelemetryEgress.cs",
-              "ViewState": "AgIAABAAAAAAAAAAAAAcwBcAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAAFwAAAAAAAAAAAAswHsAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-07T13:38:30.312Z",
               "EditorCaption": ""
@@ -163,19 +173,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-07T13:41:47.81Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "RobotSession.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
-              "RelativeDocumentMoniker": "Services\\RobotSession.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
-              "RelativeToolTip": "Services\\RobotSession.cs",
-              "ViewState": "AgIAADIBAAAAAAAAAAAgwFoAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T20:19:33.147Z",
-              "EditorCaption": ""
             }
           ]
         }
