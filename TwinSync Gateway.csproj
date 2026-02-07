@@ -10,7 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="Temp\" />
     <Folder Include="Views\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
   </ItemGroup>
 
 </Project>

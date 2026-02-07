@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "sXtWW0lrf7I=",
+  "dgSpecHash": "TnEs8Ev/TJ4=",
   "success": true,
   "projectFilePath": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\jcollison\\.nuget\\packages\\mqttnet\\4.3.7.1207\\mqttnet.4.3.7.1207.nupkg.sha512"
+  ],
   "logs": []
 }

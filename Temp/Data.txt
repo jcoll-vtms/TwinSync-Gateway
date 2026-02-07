@@ -1,0 +1,27 @@
+Endpoint=  a2oo54s3mt6et0-ats.iot.us-east-1.amazonaws.com
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "iot:Connect",
+      "Resource": "arn:aws:iot:us-east-1:296942754143:client/TwinSyncGateway-001"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Publish",
+      "Resource": "arn:aws:iot:us-east-1:296942754143:topic/twinsync/TwinSyncGateway-001/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Subscribe",
+      "Resource": "arn:aws:iot:us-east-1:296942754143:topicfilter/twinsync/TwinSyncGateway-001/cmd/#"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iot:Receive",
+      "Resource": "arn:aws:iot:us-east-1:296942754143:topic/twinsync/TwinSyncGateway-001/cmd/#"
+    }
+  ]
+}

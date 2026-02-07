@@ -19,12 +19,27 @@ namespace TwinSync_Gateway.Services
     /// </summary>
     public sealed class RobotSession : IAsyncDisposable
     {
+        private sealed class UserPlanState
+        {
+            public TelemetryPlan Plan { get; set; } = default!;
+            public DateTime LastSeenUtc { get; set; }
+        }
+
         public event Action<string>? Log; // optional (wire to UI/debug if you want)
+
+        // Lease -based user plan cleanup (optional): if a user hasn't sent a heartbeat within the lease timeout,
+        // we can remove their plan to free up robot resources. This is not strictly necessary if users are well-behaved,
+        // but can help in cases where clients disconnect without cleanup.
+        private readonly TimeSpan _leaseTimeout = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan _reapInterval = TimeSpan.FromSeconds(5);
+        private CancellationTokenSource? _leaseCts;
+        private Task? _leaseTask;
 
         private readonly SemaphoreSlim _ioLock = new(1, 1);
 
         // User plans (union model)
-        private readonly Dictionary<string, TelemetryPlan> _userPlans = new();
+        private readonly object _userPlansLock = new();
+        private readonly Dictionary<string, UserPlanState> _userPlans = new();
 
         // Last applied plan (what robot currently has)
         private TelemetryPlan _appliedPlan = TelemetryPlan.Empty;
@@ -73,8 +88,16 @@ namespace TwinSync_Gateway.Services
             if (string.IsNullOrWhiteSpace(userId)) return;
             if (plan is null) return;
 
-            lock (_userPlans)
-                _userPlans[userId] = plan;
+            var now = DateTime.UtcNow;
+
+            lock (_userPlansLock)
+            {
+                _userPlans[userId] = new UserPlanState
+                {
+                    Plan = plan,
+                    LastSeenUtc = now
+                };
+            }
 
             _desiredPlan = ComputeUnionPlan();
 
@@ -82,12 +105,28 @@ namespace TwinSync_Gateway.Services
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
         }
 
+        public void TouchUser(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return;
+
+            var now = DateTime.UtcNow;
+
+            lock (_userPlansLock)
+            {
+                if (_userPlans.TryGetValue(userId, out var state))
+                    state.LastSeenUtc = now;
+            }
+        }
+
         public void RemoveUser(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
 
-            lock (_userPlans)
-                _userPlans.Remove(userId);
+            bool removed;
+            lock (_userPlansLock)
+                removed = _userPlans.Remove(userId);
+
+            if (!removed) return;
 
             _desiredPlan = ComputeUnionPlan();
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
@@ -106,12 +145,18 @@ namespace TwinSync_Gateway.Services
             _runTask = RunAsync(_cts.Token);
 
             await _connectedTcs.Task.ConfigureAwait(false);
+
+            // Start lease reaper after successful connection (optional cleanup of stale user plans)
+            StartLeaseReaper();
         }
 
         public async Task DisconnectAsync()
         {
             // User intent: stop streaming and don't auto-resume until StartStreamingAsync called again
             _desiredStreaming = false;
+
+            // Stop lease reaper first to avoid it trying to apply plans while we're shutting down / after we've cleared the transport
+            StopLeaseReaper();
 
             await StopStreamingInternalAsync().ConfigureAwait(false);
 
@@ -162,6 +207,91 @@ namespace TwinSync_Gateway.Services
             await StopStreamingInternalAsync().ConfigureAwait(false);
         }
 
+        // Optional lease reaper for cleaning up stale user plans. Not strictly necessary,
+        // but can help in cases where clients disconnect without cleanup.
+        private void StartLeaseReaper()
+        {
+            if (_leaseTask != null) return;
+
+            _leaseCts = new CancellationTokenSource();
+            var ct = _leaseCts.Token;
+
+            _leaseTask = Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(_reapInterval, ct).ConfigureAwait(false);
+                        ReapExpiredUsers();
+                    }
+                    catch (OperationCanceledException) { }
+                    catch { /* swallow */ }
+                }
+            }, ct);
+        }
+
+        // Reap users whose last heartbeat is too old, then update the union plan if needed
+        private void StopLeaseReaper()
+        {
+            var cts = _leaseCts;
+            var task = _leaseTask;
+
+            _leaseCts = null;
+            _leaseTask = null;
+
+            try { cts?.Cancel(); } catch { }
+
+            // Fire-and-forget cleanup (don’t block UI thread)
+            if (task != null || cts != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (task != null)
+                            await task.ConfigureAwait(false);
+                    }
+                    catch { /* swallow */ }
+                    finally
+                    {
+                        try { cts?.Dispose(); } catch { }
+                    }
+                });
+            }
+        }
+
+        // Remove expired users (those that haven't sent a heartbeat within the lease timeout)
+        private void ReapExpiredUsers()
+        {
+            var now = DateTime.UtcNow;
+            List<string>? expired = null;
+
+            lock (_userPlansLock)
+            {
+                foreach (var kvp in _userPlans)
+                {
+                    if (now - kvp.Value.LastSeenUtc > _leaseTimeout)
+                    {
+                        expired ??= new List<string>();
+                        expired.Add(kvp.Key);
+                    }
+                }
+
+                if (expired != null)
+                {
+                    foreach (var id in expired)
+                        _userPlans.Remove(id);
+                }
+            }
+
+            if (expired == null || expired.Count == 0)
+                return;
+
+            _desiredPlan = ComputeUnionPlan();
+            _ = ApplyPlanIfChangedAsync(CancellationToken.None);
+        }
+
         private TelemetryPlan ComputeUnionPlan()
         {
             // Deterministic: union all, sort ascending, take max N
@@ -175,9 +305,9 @@ namespace TwinSync_Gateway.Services
                     .ToArray();
             }
 
-            TelemetryPlan[] plans;
-            lock (_userPlans)
-                plans = _userPlans.Values.ToArray();
+            List<TelemetryPlan> plans;
+            lock (_userPlansLock)
+                plans = _userPlans.Values.Select(s => s.Plan).ToList();
 
             var di = UnionSortedCapped(plans.SelectMany(p => p.DI ?? System.Array.Empty<int>()), MaxDi);
             var gi = UnionSortedCapped(plans.SelectMany(p => p.GI ?? System.Array.Empty<int>()), MaxGi);

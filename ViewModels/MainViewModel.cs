@@ -5,11 +5,16 @@ using System.Windows;
 using System.Xml.Linq;
 using TwinSync_Gateway.Models;
 using TwinSync_Gateway.Services;
+using System.Security.Cryptography.X509Certificates;
 
 namespace TwinSync_Gateway.ViewModels
 {
     public sealed class MainViewModel : ObservableObject
     {
+        private IotMqttConnection? _mqtt;
+        private IotPlanIngress? _iotIngress;
+        private IotTelemetryEgress? _iotEgress;
+
         private readonly RobotConfigStore _store = new RobotConfigStore();
 
         private bool CanPlanSelected()
@@ -68,6 +73,57 @@ namespace TwinSync_Gateway.ViewModels
             Reload();
         }
 
+        public async Task StartIotAsync()
+        {
+            if (_mqtt != null) return;
+
+            var gatewayId = "TwinSyncGateway-001";
+
+            var endpointHost = "a2oo54s3mt6et0-ats.iot.us-east-1.amazonaws.com";
+            var mqttClientId = gatewayId;
+
+            var cert = LoadClientCertFromPfx(
+                pfxPath: @"C:\Users\jcollison\source\TwinSync_cert\TwinSyncGateway-001.pfx",
+                password: "321cba"
+            );
+
+            _mqtt = new IotMqttConnection();
+            _mqtt.Log += msg => System.Diagnostics.Debug.WriteLine($"[MQTT] {msg}");
+
+            await _mqtt.ConnectAsync(endpointHost, 8883, mqttClientId, cert, CancellationToken.None);
+
+            _iotIngress = new IotPlanIngress(
+                mqtt: _mqtt,
+                gatewayId: gatewayId,
+                getSessionByRobot: robotName =>
+                    Robots.FirstOrDefault(r => r.Name == robotName)?.Session
+            );
+            _iotIngress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT] {msg}");
+
+            await _iotIngress.SubscribeAsync(CancellationToken.None);
+
+            _iotEgress = new IotTelemetryEgress(_mqtt, gatewayId);
+            _iotEgress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT-E] {msg}");
+            _iotEgress.Start(TimeSpan.FromMilliseconds(100)); // 10 Hz
+        }
+
+
+        private static X509Certificate2 LoadClientCertFromPfx(string pfxPath, string? password)
+        {
+            var cert = new X509Certificate2(
+                pfxPath,
+                password,
+                X509KeyStorageFlags.MachineKeySet |
+                X509KeyStorageFlags.PersistKeySet |
+                X509KeyStorageFlags.Exportable);
+
+            if (!cert.HasPrivateKey)
+                throw new InvalidOperationException($"Certificate loaded from '{pfxPath}' has no private key.");
+
+            return cert;
+        }
+
+
         private bool CanConnectSelected()
             => SelectedRobot != null && SelectedRobot.Status == RobotStatus.Disconnected;
 
@@ -117,8 +173,10 @@ namespace TwinSync_Gateway.ViewModels
 
             vm.Session.TelemetryUpdated += frame =>
             {
+                _iotEgress?.Enqueue(vm.Name, frame);
+
                 System.Diagnostics.Debug.WriteLine(
-    $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
+                $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
