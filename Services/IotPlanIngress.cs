@@ -8,6 +8,7 @@ namespace TwinSync_Gateway.Services
 {
     public sealed class IotPlanIngress
     {
+        private readonly string _tenantId;
         private readonly string _gatewayId;
         private readonly Func<string, RobotSession?> _getSessionByRobot;
         private readonly IotMqttConnection _mqtt;
@@ -16,15 +17,17 @@ namespace TwinSync_Gateway.Services
 
         public IotPlanIngress(
             IotMqttConnection mqtt,
+            string tenantId,
             string gatewayId,
             Func<string, RobotSession?> getSessionByRobot)
         {
             _mqtt = mqtt;
+            _tenantId = tenantId;
             _gatewayId = gatewayId;
             _getSessionByRobot = getSessionByRobot;
 
             // Register message handler once
-            _mqtt.SetMessageHandler(OnMessageAsync);
+            _mqtt.AddMessageHandler(OnMessageAsync);
         }
 
         public async Task SubscribeAsync(CancellationToken ct)
@@ -34,6 +37,11 @@ namespace TwinSync_Gateway.Services
             await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/plan/+/+", qos, ct);
             await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/hb/+/+", qos, ct);
             await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/leave/+/+", qos, ct);
+
+            // Tenant topics (new)
+            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/plan/+/+", qos, ct);
+            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/hb/+/+", qos, ct);
+            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/leave/+/+", qos, ct);
 
             Log?.Invoke("Ingress subscriptions active.");
         }
@@ -57,12 +65,31 @@ namespace TwinSync_Gateway.Services
             var parts = topic.Split('/');
             if (parts.Length < 5) return;
 
-            if (!string.Equals(parts[0], "twinsync", StringComparison.OrdinalIgnoreCase)) return;
-            if (!string.Equals(parts[1], _gatewayId, StringComparison.Ordinal)) return;
+            // Legacy: twinsync/{gatewayId}/{verb}/{robot}/{user}
+            // Tenant: twinsync/{tenantId}/{gatewayId}/{verb}/{robot}/{user}
+            string verb, robotName, userId;
 
-            var verb = parts[2];
-            var robotName = parts[3];
-            var userId = parts[4];
+            if (parts.Length >= 6 &&
+            string.Equals(parts[0], "twinsync", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(parts[1], _tenantId, StringComparison.Ordinal) &&
+            string.Equals(parts[2], _gatewayId, StringComparison.Ordinal))
+            {
+                verb = parts[3];
+                robotName = parts[4];
+                userId = parts[5];
+            }
+            else if (
+            string.Equals(parts[0], "twinsync", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(parts[1], _gatewayId, StringComparison.Ordinal))
+            {
+                verb = parts[2];
+                robotName = parts[3];
+                userId = parts[4];
+            }
+            else
+            {
+                return;
+            }
 
             var session = _getSessionByRobot(robotName);
             if (session == null)

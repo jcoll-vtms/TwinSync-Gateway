@@ -15,6 +15,7 @@ namespace TwinSync_Gateway.ViewModels
         private IotMqttConnection? _mqtt;
         private IotPlanIngress? _iotIngress;
         private IotTelemetryEgress? _iotEgress;
+        private IotRosterPublisher? _rosterPublisher;
 
         private readonly RobotConfigStore _store = new RobotConfigStore();
 
@@ -78,6 +79,7 @@ namespace TwinSync_Gateway.ViewModels
         {
             if (_mqtt != null) return;
 
+            var tenantId = "default";
             var gatewayId = "TwinSyncGateway-001";
 
             var endpointHost = "a2oo54s3mt6et0-ats.iot.us-east-1.amazonaws.com";
@@ -93,8 +95,11 @@ namespace TwinSync_Gateway.ViewModels
 
             await _mqtt.ConnectAsync(endpointHost, 8883, mqttClientId, cert, CancellationToken.None);
 
+            _rosterPublisher = new IotRosterPublisher(_mqtt, tenantId, gatewayId);
+
             _iotIngress = new IotPlanIngress(
                 mqtt: _mqtt,
+                tenantId: tenantId,
                 gatewayId: gatewayId,
                 getSessionByRobot: robotName =>
                     Robots.FirstOrDefault(r => r.Name == robotName)?.Session
@@ -103,9 +108,11 @@ namespace TwinSync_Gateway.ViewModels
 
             await _iotIngress.SubscribeAsync(CancellationToken.None);
 
-            _iotEgress = new IotTelemetryEgress(_mqtt, gatewayId);
+            _iotEgress = new IotTelemetryEgress(_mqtt, tenantId, gatewayId);
             _iotEgress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT-E] {msg}");
-            _iotEgress.Start(TimeSpan.FromMilliseconds(100)); // 10 Hz
+            _iotEgress.Start(TimeSpan.FromMilliseconds(30)); // Publish Hz
+
+            await PublishRosterAsync();
         }
 
         public async Task StopIotAsync()
@@ -129,6 +136,30 @@ namespace TwinSync_Gateway.ViewModels
             }
 
             System.Diagnostics.Debug.WriteLine("[IoT] Stopped IoT connection.");
+        }
+
+        private Task PublishRosterAsync()
+        {
+            if (_rosterPublisher == null) return Task.CompletedTask;
+
+            (string Name, string Status, string ConnectionType, long? LastTelemetryMs)[] snapshot =
+                Application.Current.Dispatcher.Invoke(() =>
+                    Robots.Select(r =>
+                    {
+                        long? lastTelemetryMs = r.LastTelemetryAt == default
+                            ? (long?)null
+                            : r.LastTelemetryAt.ToUnixTimeMilliseconds();
+
+                        return (
+                            Name: r.Name,
+                            Status: r.Status.ToString(),
+                            ConnectionType: r.ConnectionType.ToString(),
+                            LastTelemetryMs: lastTelemetryMs
+                        );
+                    }).ToArray()
+                );
+
+            return _rosterPublisher.PublishAsync(snapshot, CancellationToken.None);
         }
 
 
@@ -238,6 +269,8 @@ namespace TwinSync_Gateway.ViewModels
                     ApplyUserBPlanCommand.RaiseCanExecuteChanged();
                     RemoveUserBCommand.RaiseCanExecuteChanged();
                 });
+
+                _ = PublishRosterAsync();
             };
 
 
@@ -267,6 +300,8 @@ namespace TwinSync_Gateway.ViewModels
 
             try
             {
+                // ✅ Stop MQTT publishing immediately + drop cached frame
+                _iotEgress?.ClearRobot(vm.Name);         
                 await vm.Session.StopStreamingAsync(); // optional if DisconnectAsync already does this
                 await vm.Session.DisconnectAsync();
                 ApplyUserAPlanCommand.RaiseCanExecuteChanged();
@@ -276,6 +311,7 @@ namespace TwinSync_Gateway.ViewModels
             catch
             {
                 vm.SetStatus(RobotStatus.Disconnected, null);
+                _iotEgress?.ClearRobot(vm.Name);
             }
             finally
             {
@@ -299,6 +335,8 @@ namespace TwinSync_Gateway.ViewModels
             var vm = new RobotConfigViewModel(model);
             Robots.Add(vm);
             SelectedRobot = vm;
+
+            _ = PublishRosterAsync();
         }
 
         private void RemoveSelectedRobot()
@@ -306,6 +344,8 @@ namespace TwinSync_Gateway.ViewModels
             if (SelectedRobot == null) return;
             Robots.Remove(SelectedRobot);
             SelectedRobot = Robots.FirstOrDefault();
+
+            _ = PublishRosterAsync();
         }
 
         private void Save() => _store.Save(Robots.Select(r => r.Model));
@@ -317,6 +357,8 @@ namespace TwinSync_Gateway.ViewModels
                 Robots.Add(new RobotConfigViewModel(r));
 
             SelectedRobot = Robots.FirstOrDefault();
+
+            _ = PublishRosterAsync();
         }
 
         private string MakeUniqueName(string baseName)

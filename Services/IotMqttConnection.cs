@@ -3,6 +3,7 @@ using MQTTnet.Client;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 using System.Security.Cryptography.X509Certificates;
+using System.Windows.Interop;
 
 namespace TwinSync_Gateway.Services
 {
@@ -16,36 +17,73 @@ namespace TwinSync_Gateway.Services
 
         public event Action<string>? Log;
 
+        private readonly object _rxLock = new();
+        private readonly List<Func<MqttApplicationMessage, Task>> _handlers = new();
+        private bool _rxHooked;
+
         public IotMqttConnection()
         {
             _client = new MqttFactory().CreateMqttClient();
+
+            // 🔍 VERY IMPORTANT: lifecycle diagnostics
+            _client.ConnectedAsync += e =>
+            {
+                Log?.Invoke("[MQTT] CONNECTED");
+                return Task.CompletedTask;
+            };
+
+            _client.DisconnectedAsync += e =>
+            {
+                Log?.Invoke(
+                    $"[MQTT] DISCONNECTED reason={e.Reason} " +
+                    $"exc={e.Exception?.GetType().Name}: {e.Exception?.Message}"
+                );
+                return Task.CompletedTask;
+            };
         }
 
         public bool IsConnected => _client.IsConnected;
 
-        public void SetMessageHandler(Func<MqttApplicationMessage, Task> handler)
+        public void AddMessageHandler(Func<MqttApplicationMessage, Task> handler)
         {
-            // Your MQTTnet build supports ApplicationMessageReceivedAsync
-            _client.ApplicationMessageReceivedAsync += e =>
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            lock (_rxLock)
             {
-                try
+                _handlers.Add(handler);
+
+                if (_rxHooked) return;
+                _rxHooked = true;
+
+                _client.ApplicationMessageReceivedAsync += e =>
                 {
-                    return handler(e.ApplicationMessage);
-                }
-                catch (Exception ex)
-                {
-                    Log?.Invoke($"MQTT message handler error: {ex.Message}");
-                    return Task.CompletedTask;
-                }
-            };
+                    Log?.Invoke($"[RAW RX] topic='{e.ApplicationMessage.Topic}' bytes={e.ApplicationMessage.PayloadSegment.Count}");
+
+                    Func<MqttApplicationMessage, Task>[] snapshot;
+                    lock (_rxLock) snapshot = _handlers.ToArray();
+                    return DispatchSequentialAsync(snapshot, e.ApplicationMessage);
+                };
+            }
+        }
+
+        // Back-compat: keep old API name working
+        public void SetMessageHandler(Func<MqttApplicationMessage, Task> handler) => AddMessageHandler(handler);
+
+        private async Task DispatchSequentialAsync(Func<MqttApplicationMessage, Task>[] handlers, MqttApplicationMessage msg)
+        {
+            foreach (var h in handlers)
+            {
+                try { await h(msg).ConfigureAwait(false); }
+                catch (Exception ex) { Log?.Invoke($"MQTT handler error: {ex.Message}"); }
+            }
         }
 
         public async Task ConnectAsync(
-            string endpointHost,
-            int port,
-            string mqttClientId,
-            X509Certificate2 clientCert,
-            CancellationToken ct)
+                    string endpointHost,
+                    int port,
+                    string mqttClientId,
+                    X509Certificate2 clientCert,
+                    CancellationToken ct)
         {
             var options = new MqttClientOptionsBuilder()
                 .WithClientId(mqttClientId)

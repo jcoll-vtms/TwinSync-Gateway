@@ -6,6 +6,7 @@ namespace TwinSync_Gateway.Services
 {
     public sealed class IotTelemetryEgress : IAsyncDisposable
     {
+        private readonly string _tenantId;
         private readonly string _gatewayId;
         private readonly IotMqttConnection _mqtt;
 
@@ -21,9 +22,10 @@ namespace TwinSync_Gateway.Services
 
         public event Action<string>? Log;
 
-        public IotTelemetryEgress(IotMqttConnection mqtt, string gatewayId)
+        public IotTelemetryEgress(IotMqttConnection mqtt, string tenantId, string gatewayId)
         {
             _mqtt = mqtt;
+            _tenantId = tenantId;
             _gatewayId = gatewayId;
         }
 
@@ -140,7 +142,8 @@ namespace TwinSync_Gateway.Services
 
             var seq = Interlocked.Increment(ref _seq); // temp debug
 
-            var topic = $"twinsync/{_gatewayId}/telemetry/{robotName}";
+            var legacyTopic = $"twinsync/{_gatewayId}/telemetry/{robotName}";
+            var tenantTopic = $"twinsync/{_tenantId}/{_gatewayId}/telemetry/{robotName}";
             var payload = new TelemetryOut
             {
                 seq = seq, // temp debug
@@ -154,7 +157,14 @@ namespace TwinSync_Gateway.Services
             var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
 
             await _mqtt.PublishAsync(
-                topic,
+                legacyTopic,
+                bytes,
+                qos: MqttQualityOfServiceLevel.AtMostOnce,
+                retain: false,
+                ct).ConfigureAwait(false);
+
+            await _mqtt.PublishAsync(
+                tenantTopic,
                 bytes,
                 qos: MqttQualityOfServiceLevel.AtMostOnce,
                 retain: false,
