@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\plcconfigstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\plcconfigstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\iotrosterpublisher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\iotrosterpublisher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -13,10 +21,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\iotdataegress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\iotdataegress.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\robotsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -53,10 +57,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\simplctransport.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\simplctransport.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\services\\plcconfigstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:services\\plcconfigstore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\source\\repos\\twinsync gateway\\models\\plcconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -122,50 +122,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 10,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "IotDataEgress.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotDataEgress.cs",
-              "RelativeDocumentMoniker": "Services\\IotDataEgress.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotDataEgress.cs",
-              "RelativeToolTip": "Services\\IotDataEgress.cs",
-              "ViewState": "AgIAAK8AAAAAAAAAAAAYwMQAAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-07T13:38:30.312Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "IPlanTarget.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IPlanTarget.cs",
-              "RelativeDocumentMoniker": "Services\\IPlanTarget.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IPlanTarget.cs",
-              "RelativeToolTip": "Services\\IPlanTarget.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T20:03:29.237Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "RobotSession.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
-              "RelativeDocumentMoniker": "Services\\RobotSession.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
-              "RelativeToolTip": "Services\\RobotSession.cs",
-              "ViewState": "AgIAAGYAAAAAAAAAAAAuwHIAAAAPAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:03:33.527Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "PlcSession.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcSession.cs",
               "RelativeDocumentMoniker": "Services\\PlcSession.cs",
@@ -173,12 +134,11 @@
               "RelativeToolTip": "Services\\PlcSession.cs",
               "ViewState": "AgIAAC4BAAAAAAAAAAAQwEYBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:55:33.749Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:55:33.749Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "DeviceSessionBase.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\DeviceSessionBase.cs",
               "RelativeDocumentMoniker": "Services\\DeviceSessionBase.cs",
@@ -186,12 +146,11 @@
               "RelativeToolTip": "Services\\DeviceSessionBase.cs",
               "ViewState": "AgIAAHgAAAAAAAAAAAAQwJAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:02:48.485Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T18:02:48.485Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 10,
               "Title": "DeviceKey.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\DeviceKey.cs",
               "RelativeDocumentMoniker": "Services\\DeviceKey.cs",
@@ -199,25 +158,49 @@
               "RelativeToolTip": "Services\\DeviceKey.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:01:06.14Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T18:01:06.14Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "MainViewModel.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\ViewModels\\MainViewModel.cs",
               "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
               "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\ViewModels\\MainViewModel.cs",
               "RelativeToolTip": "ViewModels\\MainViewModel.cs",
-              "ViewState": "AgIAAIQBAAAAAAAAAAAqwKUBAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAFsAAAAAAAAAAAA9wGwAAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-16T18:16:12.354Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
+              "Title": "IotRosterPublisher.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotRosterPublisher.cs",
+              "RelativeDocumentMoniker": "Services\\IotRosterPublisher.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotRosterPublisher.cs",
+              "RelativeToolTip": "Services\\IotRosterPublisher.cs",
+              "ViewState": "AgIAADQAAAAAAAAAAAAgwFcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-16T19:43:30.329Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "IotDataEgress.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotDataEgress.cs",
+              "RelativeDocumentMoniker": "Services\\IotDataEgress.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotDataEgress.cs",
+              "RelativeToolTip": "Services\\IotDataEgress.cs",
+              "ViewState": "AgIAAK8AAAAAAAAAAAAYwMQAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T13:38:30.312Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "IotPlanIngress.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotPlanIngress.cs",
               "RelativeDocumentMoniker": "Services\\IotPlanIngress.cs",
@@ -225,12 +208,11 @@
               "RelativeToolTip": "Services\\IotPlanIngress.cs",
               "ViewState": "AgIAAGAAAAAAAAAAAAAAAHMAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T19:33:12.862Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T19:33:12.862Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "IDeviceFrame.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IDeviceFrame.cs",
               "RelativeDocumentMoniker": "Services\\IDeviceFrame.cs",
@@ -238,12 +220,11 @@
               "RelativeToolTip": "Services\\IDeviceFrame.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:01:37.126Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T18:01:37.126Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "SimPlcTransport.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\SimPlcTransport.cs",
               "RelativeDocumentMoniker": "Services\\SimPlcTransport.cs",
@@ -251,25 +232,48 @@
               "RelativeToolTip": "Services\\SimPlcTransport.cs",
               "ViewState": "AgIAALIAAAAAAAAAAAAQwMoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:55:00.283Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:55:00.283Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "IotRosterPublisher.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotRosterPublisher.cs",
-              "RelativeDocumentMoniker": "Services\\IotRosterPublisher.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IotRosterPublisher.cs",
-              "RelativeToolTip": "Services\\IotRosterPublisher.cs",
-              "ViewState": "AgIAACcAAAAAAAAAAAAgwEcAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "PlcConfigStore.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcConfigStore.cs",
+              "RelativeDocumentMoniker": "Services\\PlcConfigStore.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcConfigStore.cs",
+              "RelativeToolTip": "Services\\PlcConfigStore.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T19:43:30.329Z",
+              "WhenOpened": "2026-02-17T16:45:52.322Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
+              "Title": "RobotSession.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
+              "RelativeDocumentMoniker": "Services\\RobotSession.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\RobotSession.cs",
+              "RelativeToolTip": "Services\\RobotSession.cs",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAuwHIAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-16T18:03:33.527Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "IPlanTarget.cs",
+              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IPlanTarget.cs",
+              "RelativeDocumentMoniker": "Services\\IPlanTarget.cs",
+              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IPlanTarget.cs",
+              "RelativeToolTip": "Services\\IPlanTarget.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-16T20:03:29.237Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "IDeviceSession.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\IDeviceSession.cs",
               "RelativeDocumentMoniker": "Services\\IDeviceSession.cs",
@@ -277,12 +281,11 @@
               "RelativeToolTip": "Services\\IDeviceSession.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:02:17.552Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T18:02:17.552Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "PlcAbstractions.cs",
               "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcAbstractions.cs",
               "RelativeDocumentMoniker": "Services\\PlcAbstractions.cs",
@@ -290,21 +293,7 @@
               "RelativeToolTip": "Services\\PlcAbstractions.cs",
               "ViewState": "AgIAAAMAAAAAAAAAAAAEwAsAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:54:28.255Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "PlcConfigStore.cs",
-              "DocumentMoniker": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcConfigStore.cs",
-              "RelativeDocumentMoniker": "Services\\PlcConfigStore.cs",
-              "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\Services\\PlcConfigStore.cs",
-              "RelativeToolTip": "Services\\PlcConfigStore.cs",
-              "ViewState": "AgIAABsAAAAAAAAAAAAQwDMAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:45:52.322Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:54:28.255Z"
             },
             {
               "$type": "Document",
@@ -316,8 +305,7 @@
               "RelativeToolTip": "Models\\PlcConfig.cs",
               "ViewState": "AgIAAAYAAAAAAAAAAAAgwBQAAAA3AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:45:11.758Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:45:11.758Z"
             },
             {
               "$type": "Document",
@@ -329,8 +317,7 @@
               "RelativeToolTip": "Models\\PlcModel.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:49:36.573Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:49:36.573Z"
             },
             {
               "$type": "Document",
@@ -342,8 +329,7 @@
               "RelativeToolTip": "Services\\RobotConfigStore.cs",
               "ViewState": "AgIAAB0AAAAAAAAAAAAAADQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-17T16:43:42.013Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-17T16:43:42.013Z"
             },
             {
               "$type": "Document",
@@ -379,8 +365,7 @@
               "RelativeToolTip": "Models\\RobotConfig.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAkwB8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-16T18:34:37.69Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-16T18:34:37.69Z"
             },
             {
               "$type": "Document",

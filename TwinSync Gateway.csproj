@@ -10,7 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Temp\" />
     <Folder Include="Views\" />
   </ItemGroup>
 

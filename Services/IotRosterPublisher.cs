@@ -16,59 +16,72 @@ namespace TwinSync_Gateway.Services
 
         public IotRosterPublisher(IotMqttConnection mqtt, string tenantId, string gatewayId)
         {
-            _mqtt = mqtt;
-            _tenantId = tenantId;
-            _gatewayId = gatewayId;
+            _mqtt = mqtt ?? throw new ArgumentNullException(nameof(mqtt));
+            _tenantId = tenantId ?? throw new ArgumentNullException(nameof(tenantId));
+            _gatewayId = gatewayId ?? throw new ArgumentNullException(nameof(gatewayId));
         }
 
+        public sealed record DeviceRosterEntry(
+            string deviceId,
+            string deviceType,
+            string displayName,
+            string status,
+            string connectionType,
+            long? lastDataMs);
+
         /// <summary>
-        /// Backward compatible robot roster publish.
-        /// ALSO publishes the new device roster format at /devices.
+        /// Publish retained device roster to:
+        ///   twinsync/{tenantId}/{gatewayId}/devices   (retain=true)
+        ///
+        /// Payload:
+        /// {
+        ///   ts, tenantId, gatewayId,
+        ///   devices: [{ deviceId, deviceType, displayName, status, connectionType, lastDataMs }]
+        /// }
         /// </summary>
-        public async Task PublishAsync(
-            IEnumerable<(string Name, string Status, string ConnectionType, long? LastTelemetryMs)> robots,
+        public async Task PublishDevicesAsync(
+            IEnumerable<DeviceRosterEntry> devices,
             CancellationToken ct)
         {
             if (!_mqtt.IsConnected) return;
 
             var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var topic = $"twinsync/{_tenantId}/{_gatewayId}/devices";
 
-            // ✅ Only new topic/payload (multi-device)
-            var devicesTopic = $"twinsync/{_tenantId}/{_gatewayId}/devices";
-
-            var devicesPayload = new
+            var payload = new
             {
                 ts = nowMs,
                 tenantId = _tenantId,
                 gatewayId = _gatewayId,
-                devices = robots.Select(r => new
-                {
-                    deviceId = r.Name,
-                    deviceType = "fanuc-karel",   // ✅ match RobotSession.Key.DeviceType
-                    displayName = r.Name,
-                    status = r.Status,
-                    connectionType = r.ConnectionType,
-                    lastDataMs = r.LastTelemetryMs
-                }).ToArray()
+                devices = (devices ?? Enumerable.Empty<DeviceRosterEntry>())
+                    .Select(d => new
+                    {
+                        deviceId = d.deviceId,
+                        deviceType = d.deviceType,
+                        displayName = d.displayName,
+                        status = d.status,
+                        connectionType = d.connectionType,
+                        lastDataMs = d.lastDataMs
+                    })
+                    .ToArray()
             };
 
             try
             {
-                var devicesBytes = JsonSerializer.SerializeToUtf8Bytes(devicesPayload);
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
                 await _mqtt.PublishAsync(
-                    devicesTopic,
-                    devicesBytes,
+                    topic,
+                    bytes,
                     qos: MqttQualityOfServiceLevel.AtLeastOnce,
                     retain: true,
                     ct).ConfigureAwait(false);
 
-                System.Diagnostics.Debug.WriteLine($"[Roster] Published devices bytes={devicesBytes.Length}");
+                System.Diagnostics.Debug.WriteLine($"[Roster] Published /devices bytes={bytes.Length}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Roster] Publish FAILED: {ex}");
             }
         }
-
     }
 }
