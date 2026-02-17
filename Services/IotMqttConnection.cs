@@ -2,8 +2,11 @@
 using MQTTnet.Client;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
+using System;
+using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
-using System.Windows.Interop;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TwinSync_Gateway.Services
 {
@@ -25,7 +28,7 @@ namespace TwinSync_Gateway.Services
         {
             _client = new MqttFactory().CreateMqttClient();
 
-            // 🔍 VERY IMPORTANT: lifecycle diagnostics
+            // lifecycle diagnostics
             _client.ConnectedAsync += e =>
             {
                 Log?.Invoke("[MQTT] CONNECTED");
@@ -44,26 +47,45 @@ namespace TwinSync_Gateway.Services
 
         public bool IsConnected => _client.IsConnected;
 
+        /// <summary>
+        /// Adds a message handler. Multiple handlers are supported and are invoked sequentially.
+        /// </summary>
         public void AddMessageHandler(Func<MqttApplicationMessage, Task> handler)
         {
             if (handler == null) throw new ArgumentNullException(nameof(handler));
 
+            bool needHook = false;
+
             lock (_rxLock)
             {
                 _handlers.Add(handler);
+                if (!_rxHooked)
+                {
+                    _rxHooked = true;
+                    needHook = true;
+                }
+            }
 
-                if (_rxHooked) return;
-                _rxHooked = true;
+            if (!needHook) return;
 
-                _client.ApplicationMessageReceivedAsync += e =>
+            // Hook once
+            _client.ApplicationMessageReceivedAsync += e =>
+            {
+                try
                 {
                     Log?.Invoke($"[RAW RX] topic='{e.ApplicationMessage.Topic}' bytes={e.ApplicationMessage.PayloadSegment.Count}");
 
                     Func<MqttApplicationMessage, Task>[] snapshot;
                     lock (_rxLock) snapshot = _handlers.ToArray();
+
                     return DispatchSequentialAsync(snapshot, e.ApplicationMessage);
-                };
-            }
+                }
+                catch (Exception ex)
+                {
+                    Log?.Invoke($"MQTT RX dispatch error: {ex.Message}");
+                    return Task.CompletedTask;
+                }
+            };
         }
 
         // Back-compat: keep old API name working
@@ -79,11 +101,11 @@ namespace TwinSync_Gateway.Services
         }
 
         public async Task ConnectAsync(
-                    string endpointHost,
-                    int port,
-                    string mqttClientId,
-                    X509Certificate2 clientCert,
-                    CancellationToken ct)
+            string endpointHost,
+            int port,
+            string mqttClientId,
+            X509Certificate2 clientCert,
+            CancellationToken ct)
         {
             var options = new MqttClientOptionsBuilder()
                 .WithClientId(mqttClientId)
@@ -117,8 +139,15 @@ namespace TwinSync_Gateway.Services
                 .WithQualityOfServiceLevel(qos)
                 .Build();
 
-            await _client.SubscribeAsync(tf, ct).ConfigureAwait(false);
-            Log?.Invoke($"Subscribed: {topicFilter}");
+            try
+            {
+                await _client.SubscribeAsync(tf, ct).ConfigureAwait(false);
+                Log?.Invoke($"Subscribed: {topicFilter}");
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke($"Subscribe error for '{topicFilter}': {ex.Message}");
+            }
         }
 
         public async Task PublishAsync(string topic, byte[] payload, MqttQualityOfServiceLevel qos, bool retain, CancellationToken ct)
@@ -137,10 +166,22 @@ namespace TwinSync_Gateway.Services
 
         public async ValueTask DisposeAsync()
         {
+            // prevent any future dispatch
+            lock (_rxLock)
+            {
+                _handlers.Clear();
+            }
+
             try
             {
                 if (_client.IsConnected)
                     await _client.DisconnectAsync().ConfigureAwait(false);
+            }
+            catch { }
+
+            try
+            {
+                _client?.Dispose();
             }
             catch { }
         }

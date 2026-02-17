@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 using TwinSync_Gateway.Models;
 
 namespace TwinSync_Gateway.Services
@@ -14,22 +14,20 @@ namespace TwinSync_Gateway.Services
     /// <summary>
     /// Manages a single robot connection + streaming loop.
     /// - Auto-reconnect ON by default
-    /// - Auto-resume streaming after reconnect (if user requested streaming)
+    /// - Demand-driven streaming: stream only when users exist
     /// - Uses END-framed GET_FAST responses to avoid backlog/delay
     /// </summary>
-    public sealed class RobotSession : IAsyncDisposable
+    public sealed class RobotSession : IDeviceSession<TelemetryFrame>, IPlanTarget
     {
         private sealed class UserPlanState
         {
-            public TelemetryPlan Plan { get; set; } = default!;
+            public TelemetryPlan Plan { get; set; } = TelemetryPlan.Empty;
             public DateTime LastSeenUtc { get; set; }
         }
 
-        public event Action<string>? Log; // optional (wire to UI/debug if you want)
+        public event Action<string>? Log;
 
-        // Lease -based user plan cleanup (optional): if a user hasn't sent a heartbeat within the lease timeout,
-        // we can remove their plan to free up robot resources. This is not strictly necessary if users are well-behaved,
-        // but can help in cases where clients disconnect without cleanup.
+        // Lease-based cleanup (optional)
         private readonly TimeSpan _leaseTimeout = TimeSpan.FromSeconds(60);
         private readonly TimeSpan _reapInterval = TimeSpan.FromSeconds(5);
         private CancellationTokenSource? _leaseCts;
@@ -41,10 +39,7 @@ namespace TwinSync_Gateway.Services
         private readonly object _userPlansLock = new();
         private readonly Dictionary<string, UserPlanState> _userPlans = new();
 
-        // Last applied plan (what robot currently has)
         private TelemetryPlan _appliedPlan = TelemetryPlan.Empty;
-
-        // Latest desired union plan (computed from userPlans)
         private TelemetryPlan _desiredPlan = TelemetryPlan.Empty;
 
         // KAREL caps (must match GW_SERV5)
@@ -63,53 +58,101 @@ namespace TwinSync_Gateway.Services
         private CancellationTokenSource? _streamCts;
         private Task? _streamTask;
 
-        // Connect completion signal for ConnectAsync()
         private TaskCompletionSource<bool>? _connectedTcs;
-
-        // Connection-loss signal (set when streaming detects socket death)
         private TaskCompletionSource<bool>? _connectionLostTcs;
 
         // demand-driven: stream only when users exist
         private volatile bool _desiredStreaming = false;
         private volatile int _streamPeriodMs = 30;
 
-        public event Action<RobotStatus, string?>? StatusChanged;
+        // frame sequence (session-local)
+        private long _frameSeq;
+
+        public DeviceKey Key { get; }
+
+        // ---- Multi-device surface (IDeviceSession<TelemetryFrame>) ----
+        public DeviceStatus Status { get; private set; } = DeviceStatus.Disconnected;
+
+        public event Action<DeviceStatus, Exception?>? StatusChanged;
+        public event Action<TelemetryFrame>? FrameReceived;
+        public event Action<bool>? PublishAllowedChanged;
+
+        private bool _publishAllowed;
+
+        public void SetPublishAllowed(bool allowed)
+        {
+            if (_publishAllowed == allowed) return;
+            _publishAllowed = allowed;
+            PublishAllowedChanged?.Invoke(allowed);
+        }
+
+        // ---- Existing robot/UI surface you already use ----
+        public event Action<RobotStatus, string?>? RobotStatusChanged;
         public event Action<double[]>? JointsUpdated;
         public event Action<TelemetryFrame>? TelemetryUpdated;
         public event Action<bool>? ActiveUsersChanged;
 
         public RobotSession(RobotConfig config, Func<IRobotTransport> transportFactory)
+            : this(
+                tenantId: "default",
+                gatewayId: "TwinSyncGateway-001",
+                robotName: config?.Name ?? "Robot",
+                config: config,
+                transportFactory: transportFactory)
         {
-            _config = config;
-            _transportFactory = transportFactory;
         }
 
-        // Check if we have any active users (used for streaming demand)
+        public RobotSession(
+            string tenantId,
+            string gatewayId,
+            string robotName,
+            RobotConfig config,
+            Func<IRobotTransport> transportFactory)
+        {
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _transportFactory = transportFactory ?? throw new ArgumentNullException(nameof(transportFactory));
+
+            Key = new DeviceKey(
+                tenantId,
+                gatewayId,
+                robotName,
+                "fanuc-karel");
+        }
+
+        // ---- IPlanTarget ----
+        public void ApplyTelemetryPlan(string userId, TelemetryPlan plan, int? periodMs)
+        {
+            SetUserPlan(userId, plan);
+
+            if (periodMs.HasValue && periodMs.Value > 0)
+                _ = StartStreamingAsync(periodMs.Value);
+        }
+
         public bool HasAnyActiveUsers()
         {
             lock (_userPlansLock)
                 return _userPlans.Count > 0;
         }
 
-        // Update streaming demand based on whether we have any active users. If no users, stop streaming to save robot resources.
         private void UpdateStreamingDemand()
         {
             var want = HasAnyActiveUsers();
 
-            // Only react if it actually changed (avoid churn)
             if (_desiredStreaming == want) return;
 
             _desiredStreaming = want;
             ActiveUsersChanged?.Invoke(want);
 
-            // Start/stop streaming without touching the socket.
+            // Cloud publish gating should always match "has users"
+            SetPublishAllowed(want);
+
+            // Start/stop streaming without tearing down the socket
             if (want)
                 _ = StartStreamingAsync(_streamPeriodMs);
             else
                 _ = StopStreamingInternalAsync();
         }
 
-        // Set or update a user's telemetry plan. This will recompute the union plan and apply it if needed.
         public void SetUserPlan(string userId, TelemetryPlan plan)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
@@ -129,7 +172,6 @@ namespace TwinSync_Gateway.Services
             _desiredPlan = ComputeUnionPlan();
             UpdateStreamingDemand();
 
-            // Fire-and-forget apply (safe: guarded by _ioLock + checks)
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
         }
 
@@ -158,38 +200,43 @@ namespace TwinSync_Gateway.Services
 
             _desiredPlan = ComputeUnionPlan();
             UpdateStreamingDemand();
+
             _ = ApplyPlanIfChangedAsync(CancellationToken.None);
         }
 
         public TelemetryPlan GetDesiredPlan() => _desiredPlan;
         public TelemetryPlan GetAppliedPlan() => _appliedPlan;
 
+        // IDeviceSession interface signature (no CT)
+        public Task ConnectAsync() => ConnectAsync(CancellationToken.None);
+
         public async Task ConnectAsync(CancellationToken ct = default)
         {
-            if (_cts != null) return; // already running
+            if (_cts != null) return;
 
             _connectedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            _runTask = RunAsync(_cts.Token);
+            _runTask = Task.Run(() => RunAsync(_cts.Token));
 
             await _connectedTcs.Task.ConfigureAwait(false);
 
-            // Start lease reaper after successful connection (optional cleanup of stale user plans)
             StartLeaseReaper();
 
-            // in case we had user plans before connect, start streaming if needed
+            // Ensure publishAllowed reflects current user state on connect
+            SetPublishAllowed(HasAnyActiveUsers());
+
+            // If users already exist, streaming will start
             UpdateStreamingDemand();
         }
 
         public async Task DisconnectAsync()
         {
-            // User intent: stop streaming and don't auto-resume until StartStreamingAsync called again
+            // 🔒 critical invariants
+            SetPublishAllowed(false);
             _desiredStreaming = false;
 
-            // Stop lease reaper first to avoid it trying to apply plans while we're shutting down / after we've cleared the transport
             StopLeaseReaper();
-
             await StopStreamingInternalAsync().ConfigureAwait(false);
 
             if (_cts == null) return;
@@ -203,7 +250,7 @@ namespace TwinSync_Gateway.Services
                 if (_runTask != null)
                     await _runTask.ConfigureAwait(false);
             }
-            catch { /* swallow */ }
+            catch { }
 
             try { _cts.Dispose(); } catch { }
             _cts = null;
@@ -211,7 +258,8 @@ namespace TwinSync_Gateway.Services
             _connectedTcs = null;
             _connectionLostTcs = null;
 
-            StatusChanged?.Invoke(RobotStatus.Disconnected, null);
+            SetDeviceStatus(DeviceStatus.Disconnected, null);
+            RobotStatusChanged?.Invoke(RobotStatus.Disconnected, null);
         }
 
         public Task StartStreamingAsync(int periodMs = 30)
@@ -219,7 +267,6 @@ namespace TwinSync_Gateway.Services
             _desiredStreaming = true;
             _streamPeriodMs = periodMs;
 
-            // If we don't have a transport yet, streaming will auto-start in RunAsync after connect, so just return.
             if (_transport == null)
                 return Task.CompletedTask;
 
@@ -227,9 +274,12 @@ namespace TwinSync_Gateway.Services
                 return Task.CompletedTask;
 
             _streamCts = new CancellationTokenSource();
-            _streamTask = StreamLoopAsync(periodMs, _streamCts.Token);
+            _streamTask = Task.Run(() => StreamLoopAsync(periodMs, _streamCts.Token));
 
-            StatusChanged?.Invoke(RobotStatus.Streaming, null);
+            // Streaming state
+            SetDeviceStatus(DeviceStatus.Streaming, null);
+            RobotStatusChanged?.Invoke(RobotStatus.Streaming, null);
+
             return Task.CompletedTask;
         }
 
@@ -239,8 +289,6 @@ namespace TwinSync_Gateway.Services
             await StopStreamingInternalAsync().ConfigureAwait(false);
         }
 
-        // Optional lease reaper for cleaning up stale user plans. Not strictly necessary,
-        // but can help in cases where clients disconnect without cleanup.
         private void StartLeaseReaper()
         {
             if (_leaseTask != null) return;
@@ -258,12 +306,11 @@ namespace TwinSync_Gateway.Services
                         ReapExpiredUsers();
                     }
                     catch (OperationCanceledException) { }
-                    catch { /* swallow */ }
+                    catch { }
                 }
             }, ct);
         }
 
-        // Reap users whose last heartbeat is too old, then update the union plan if needed
         private void StopLeaseReaper()
         {
             var cts = _leaseCts;
@@ -274,7 +321,6 @@ namespace TwinSync_Gateway.Services
 
             try { cts?.Cancel(); } catch { }
 
-            // Fire-and-forget cleanup (don’t block UI thread)
             if (task != null || cts != null)
             {
                 _ = Task.Run(async () =>
@@ -284,7 +330,7 @@ namespace TwinSync_Gateway.Services
                         if (task != null)
                             await task.ConfigureAwait(false);
                     }
-                    catch { /* swallow */ }
+                    catch { }
                     finally
                     {
                         try { cts?.Dispose(); } catch { }
@@ -293,7 +339,6 @@ namespace TwinSync_Gateway.Services
             }
         }
 
-        // Remove expired users (those that haven't sent a heartbeat within the lease timeout)
         private void ReapExpiredUsers()
         {
             var now = DateTime.UtcNow;
@@ -327,7 +372,6 @@ namespace TwinSync_Gateway.Services
 
         private TelemetryPlan ComputeUnionPlan()
         {
-            // Deterministic: union all, sort ascending, take max N
             static int[] UnionSortedCapped(IEnumerable<int> allIds, int cap)
             {
                 return allIds
@@ -342,9 +386,9 @@ namespace TwinSync_Gateway.Services
             lock (_userPlansLock)
                 plans = _userPlans.Values.Select(s => s.Plan).ToList();
 
-            var di = UnionSortedCapped(plans.SelectMany(p => p.DI ?? System.Array.Empty<int>()), MaxDi);
-            var gi = UnionSortedCapped(plans.SelectMany(p => p.GI ?? System.Array.Empty<int>()), MaxGi);
-            var go = UnionSortedCapped(plans.SelectMany(p => p.GO ?? System.Array.Empty<int>()), MaxGo);
+            var di = UnionSortedCapped(plans.SelectMany(p => p.DI ?? Array.Empty<int>()), MaxDi);
+            var gi = UnionSortedCapped(plans.SelectMany(p => p.GI ?? Array.Empty<int>()), MaxGi);
+            var go = UnionSortedCapped(plans.SelectMany(p => p.GO ?? Array.Empty<int>()), MaxGo);
 
             return new TelemetryPlan(di, gi, go);
         }
@@ -359,7 +403,6 @@ namespace TwinSync_Gateway.Services
 
         private async Task ApplyPlanIfChangedAsync(CancellationToken ct)
         {
-            // Only KAREL supports PLAN right now
             if (_transport is not KarelTransport karel)
                 return;
 
@@ -370,12 +413,10 @@ namespace TwinSync_Gateway.Services
             await _ioLock.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                // Re-check under lock (another apply might have won)
                 desired = _desiredPlan;
                 if (PlanEquals(desired, _appliedPlan))
                     return;
 
-                // Apply each section. Empty list clears the plan on robot (PLAN_DI= with nothing)
                 await SendPlanAsync(karel, "PLAN_DI", desired.DI, ct).ConfigureAwait(false);
                 await SendPlanAsync(karel, "PLAN_GI", desired.GI, ct).ConfigureAwait(false);
                 await SendPlanAsync(karel, "PLAN_GO", desired.GO, ct).ConfigureAwait(false);
@@ -392,10 +433,7 @@ namespace TwinSync_Gateway.Services
 
         private static async Task SendPlanAsync(KarelTransport karel, string prefix, IReadOnlyCollection<int> ids, CancellationToken ct)
         {
-            // Example: "PLAN_DI=105,230"
-            var payload = ids.Count == 0
-                ? $"{prefix}="
-                : $"{prefix}={string.Join(",", ids)}";
+            var payload = ids.Count == 0 ? $"{prefix}=" : $"{prefix}={string.Join(",", ids)}";
 
             await karel.SendCommandAsync(payload, ct).ConfigureAwait(false);
             var resp = (await karel.ReadLineAsync(ct).ConfigureAwait(false)).Trim();
@@ -404,28 +442,24 @@ namespace TwinSync_Gateway.Services
                 throw new IOException($"Robot rejected {prefix}: '{resp}'");
         }
 
-
         private async Task StopStreamingInternalAsync()
         {
-            if (_streamCts == null) return;
+            // Atomically take ownership of the CTS/task
+            var cts = Interlocked.Exchange(ref _streamCts, null);
+            var task = Interlocked.Exchange(ref _streamTask, null);
 
-            try { _streamCts.Cancel(); } catch { }
+            if (cts == null) return; // someone else already stopped it
+
+            try { cts.Cancel(); } catch { }
 
             try
             {
-                if (_streamTask != null)
-                    await _streamTask.ConfigureAwait(false);
+                if (task != null)
+                    await task.ConfigureAwait(false);
             }
-            catch (TaskCanceledException) { }
-            catch (OperationCanceledException) { }
-            catch (IOException) { }
-            catch (SocketException) { }
-            catch (ObjectDisposedException) { }
-            catch { }
+            catch { /* swallow */ }
 
-            try { _streamCts.Dispose(); } catch { }
-            _streamCts = null;
-            _streamTask = null;
+            try { cts.Dispose(); } catch { }
         }
 
         private async Task StreamLoopAsync(int periodMs, CancellationToken ct)
@@ -450,6 +484,10 @@ namespace TwinSync_Gateway.Services
                         await karel.SendCommandAsync("GET_FAST", frameCts.Token).ConfigureAwait(false);
                         var frame = await ReadFastFrameAsync(karel, frameCts.Token).ConfigureAwait(false);
 
+                        // Multi-device surface
+                        FrameReceived?.Invoke(frame);
+
+                        // Existing surface
                         TelemetryUpdated?.Invoke(frame);
                         if (frame.JointsDeg is not null)
                             JointsUpdated?.Invoke(frame.JointsDeg);
@@ -465,126 +503,113 @@ namespace TwinSync_Gateway.Services
                     else
                         next = DateTime.UtcNow;
                 }
-
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                // Frame timeout (likely missing END / stalled stream) -> treat as connection loss
-                StatusChanged?.Invoke(RobotStatus.Disconnected, "Robot stream timed out");
-
-                try { _streamCts?.Cancel(); } catch { }
-                try { _streamCts?.Dispose(); } catch { }
-                _streamCts = null;
-                _streamTask = null;
+                // frame timeout: treat as connection loss signal
+                SetDeviceStatus(DeviceStatus.Faulted, new TimeoutException("Robot stream timed out"));
+                RobotStatusChanged?.Invoke(RobotStatus.Disconnected, "Robot stream timed out");
                 _connectionLostTcs?.TrySetResult(true);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 // normal stop
             }
-            catch (Exception ex) when (
-                ex is IOException ||
-                ex is SocketException ||
-                ex is ObjectDisposedException)
+            catch (Exception ex) when (ex is IOException || ex is SocketException || ex is ObjectDisposedException)
             {
-                // Robot power-cycle / socket reset / server stopped
-                StatusChanged?.Invoke(RobotStatus.Disconnected, "Robot connection lost");
-
-                // Clear streaming state so it can restart after reconnect
-                try { _streamCts?.Cancel(); } catch { }
+                SetDeviceStatus(DeviceStatus.Faulted, ex);
+                RobotStatusChanged?.Invoke(RobotStatus.Disconnected, "Robot connection lost");
+                _connectionLostTcs?.TrySetResult(true);
+            }
+            finally
+            {
+                // Always clear streaming state so reconnect can restart it
                 try { _streamCts?.Dispose(); } catch { }
                 _streamCts = null;
                 _streamTask = null;
-
-                // Signal connection manager to reconnect now
-                _connectionLostTcs?.TrySetResult(true);
             }
         }
 
-private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport karel, CancellationToken ct)
-    {
-        double[]? joints = null;
-        Dictionary<int, int>? di = null;
-        Dictionary<int, int>? gi = null;
-        Dictionary<int, int>? go = null;
-
-        while (true)
+        private async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport karel, CancellationToken ct)
         {
-            var raw = await karel.ReadLineAsync(ct).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(raw))
-                continue;
+            double[]? joints = null;
+            Dictionary<int, int>? di = null;
+            Dictionary<int, int>? gi = null;
+            Dictionary<int, int>? go = null;
 
-            var line = raw.Trim();
-
-            if (line.Equals("END", StringComparison.OrdinalIgnoreCase))
+            while (true)
             {
-                return new TelemetryFrame(
-                    Timestamp: DateTimeOffset.UtcNow,
-                    JointsDeg: joints,
-                    DI: di,
-                    GI: gi,
-                    GO: go
-                );
-            }
+                var raw = await karel.ReadLineAsync(ct).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(raw))
+                    continue;
 
-            // Joints line (tolerate prefix junk like "OJ=")
-            var jIdx = line.IndexOf("J=", StringComparison.OrdinalIgnoreCase);
+                var line = raw.Trim();
 
-            if (jIdx >= 0)
-            {
-                var csv = line.Substring(jIdx + 2).Trim();
-                var parts = csv.Split(',');
-
-                if (parts.Length == 6)
+                if (line.Equals("END", StringComparison.OrdinalIgnoreCase))
                 {
-                    var arr = new double[6];
-                    for (int i = 0; i < 6; i++)
-                        arr[i] = double.Parse(parts[i], CultureInfo.InvariantCulture);
+                    var seq = Interlocked.Increment(ref _frameSeq);
 
-                    joints = arr;
+                    return new TelemetryFrame(
+                        Timestamp: DateTimeOffset.UtcNow,
+                        Sequence: seq,
+                        JointsDeg: joints,
+                        DI: di,
+                        GI: gi,
+                        GO: go
+                    );
                 }
 
-                continue;
-            }
+                var jIdx = line.IndexOf("J=", StringComparison.OrdinalIgnoreCase);
+                if (jIdx >= 0)
+                {
+                    var csv = line[(jIdx + 2)..].Trim();
+                    var parts = csv.Split(',');
 
-            if (line.StartsWith("DI=", StringComparison.OrdinalIgnoreCase))
-            {
-                di ??= new Dictionary<int, int>();
-                ParseIdValueListInto(line.AsSpan(3), di);
-                continue;
-            }
+                    if (parts.Length == 6)
+                    {
+                        var arr = new double[6];
+                        for (int i = 0; i < 6; i++)
+                            arr[i] = double.Parse(parts[i], CultureInfo.InvariantCulture);
 
-            if (line.StartsWith("GI=", StringComparison.OrdinalIgnoreCase))
-            {
-                gi ??= new Dictionary<int, int>();
-                ParseIdValueListInto(line.AsSpan(3), gi);
-                continue;
-            }
+                        joints = arr;
+                    }
 
-            if (line.StartsWith("GO=", StringComparison.OrdinalIgnoreCase))
-            {
-                go ??= new Dictionary<int, int>();
-                ParseIdValueListInto(line.AsSpan(3), go);
-                continue;
-            }
+                    continue;
+                }
 
-            // Ignore unknown lines
+                if (line.StartsWith("DI=", StringComparison.OrdinalIgnoreCase))
+                {
+                    di ??= new Dictionary<int, int>();
+                    ParseIdValueListInto(line.AsSpan(3), di);
+                    continue;
+                }
+
+                if (line.StartsWith("GI=", StringComparison.OrdinalIgnoreCase))
+                {
+                    gi ??= new Dictionary<int, int>();
+                    ParseIdValueListInto(line.AsSpan(3), gi);
+                    continue;
+                }
+
+                if (line.StartsWith("GO=", StringComparison.OrdinalIgnoreCase))
+                {
+                    go ??= new Dictionary<int, int>();
+                    ParseIdValueListInto(line.AsSpan(3), go);
+                    continue;
+                }
+            }
         }
-    }
 
         private static void ParseIdValueListInto(ReadOnlySpan<char> s, Dictionary<int, int> dest)
         {
-            // Format examples:
-            // "105:0,106:1"
-            // " 105: 0, 106: 1"
             if (s.IsEmpty) return;
 
             while (!s.IsEmpty)
             {
-                // take token up to comma
                 int comma = s.IndexOf(',');
                 ReadOnlySpan<char> token = comma >= 0 ? s[..comma] : s;
                 token = token.Trim();
+
                 if (comma >= 0) s = s[(comma + 1)..];
                 else s = ReadOnlySpan<char>.Empty;
 
@@ -614,7 +639,8 @@ private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport kare
             {
                 try
                 {
-                    StatusChanged?.Invoke(RobotStatus.Connecting, null);
+                    SetDeviceStatus(DeviceStatus.Connecting, null);
+                    RobotStatusChanged?.Invoke(RobotStatus.Connecting, null);
 
                     _connectionLostTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -623,18 +649,20 @@ private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport kare
                     _transport = _transportFactory();
                     await _transport.ConnectAsync(_config, ct).ConfigureAwait(false);
 
-                    // After reconnect, robot plan resets (per-session), so re-apply union plan
+                    // Re-apply union plan after reconnect
                     _appliedPlan = TelemetryPlan.Empty;
                     _desiredPlan = ComputeUnionPlan();
                     if (_transport is KarelTransport)
                         await ApplyPlanIfChangedAsync(ct).ConfigureAwait(false);
 
-                    StatusChanged?.Invoke(RobotStatus.Connected, null);
+                    SetDeviceStatus(DeviceStatus.Connected, null);
+                    RobotStatusChanged?.Invoke(RobotStatus.Connected, null);
+
                     _connectedTcs?.TrySetResult(true);
                     attempt = 0;
 
-                    // Auto-start streaming if desired
-                    if (_desiredStreaming && _streamCts == null)
+                    // Start streaming only if desired and users exist
+                    if (_desiredStreaming && _streamCts == null && HasAnyActiveUsers())
                         _ = StartStreamingAsync(_streamPeriodMs);
 
                     while (!ct.IsCancellationRequested)
@@ -647,8 +675,7 @@ private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport kare
                         if (completed == lostTask)
                             throw new IOException("Connection lost");
 
-                        // If streaming is desired but stopped, restart it
-                        if (_desiredStreaming && _streamCts == null && _transport != null)
+                        if (_desiredStreaming && _streamCts == null && _transport != null && HasAnyActiveUsers())
                             _ = StartStreamingAsync(_streamPeriodMs);
                     }
                 }
@@ -656,9 +683,11 @@ private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport kare
                 {
                     break;
                 }
-                catch (Exception) when (!ct.IsCancellationRequested)
+                catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
-                    StatusChanged?.Invoke(RobotStatus.Disconnected, "Reconnecting...");
+                    // reconnect backoff
+                    SetDeviceStatus(DeviceStatus.Faulted, ex);
+                    RobotStatusChanged?.Invoke(RobotStatus.Disconnected, "Reconnecting...");
 
                     await StopStreamingInternalAsync().ConfigureAwait(false);
                     await DisposeTransportQuietlyAsync().ConfigureAwait(false);
@@ -670,10 +699,17 @@ private static async Task<TelemetryFrame> ReadFastFrameAsync(KarelTransport kare
             }
         }
 
+        private void SetDeviceStatus(DeviceStatus s, Exception? ex)
+        {
+            Status = s;
+            StatusChanged?.Invoke(s, ex);
+        }
+
         private async Task DisposeTransportQuietlyAsync()
         {
             if (_transport == null) return;
 
+            try { await _transport.DisconnectAsync(CancellationToken.None).ConfigureAwait(false); } catch { }
             try { await _transport.DisposeAsync().ConfigureAwait(false); }
             catch { }
             finally { _transport = null; }

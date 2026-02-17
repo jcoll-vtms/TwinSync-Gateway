@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace TwinSync_Gateway.Models
 {
@@ -7,7 +8,11 @@ namespace TwinSync_Gateway.Models
         IReadOnlyCollection<int> GI,
         IReadOnlyCollection<int> GO)
     {
+        public IReadOnlyCollection<int> DI { get; init; } = DI ?? Array.Empty<int>();
+        public IReadOnlyCollection<int> GI { get; init; } = GI ?? Array.Empty<int>();
+        public IReadOnlyCollection<int> GO { get; init; } = GO ?? Array.Empty<int>();
+
         public static readonly TelemetryPlan Empty =
-            new TelemetryPlan(System.Array.Empty<int>(), System.Array.Empty<int>(), System.Array.Empty<int>());
+            new TelemetryPlan(Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>());
     }
 }

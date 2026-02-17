@@ -2,25 +2,26 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Xml.Linq;
 using TwinSync_Gateway.Models;
 using TwinSync_Gateway.Services;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TwinSync_Gateway.ViewModels
 {
     public sealed class MainViewModel : ObservableObject
     {
+        // Gateway identity (until you move this into config)
+        private const string TenantId = "default";
+        private const string GatewayId = "TwinSyncGateway-001";
+
         private IotMqttConnection? _mqtt;
         private IotPlanIngress? _iotIngress;
-        private IotTelemetryEgress? _iotEgress;
+        private IotDataEgress? _iotEgress;
         private IotRosterPublisher? _rosterPublisher;
 
         private readonly RobotConfigStore _store = new RobotConfigStore();
-
-        private bool CanPlanSelected()
-    => SelectedRobot?.Session != null && SelectedRobot.Status != RobotStatus.Disconnected;
 
         public ObservableCollection<RobotConfigViewModel> Robots { get; } = new();
 
@@ -50,19 +51,16 @@ namespace TwinSync_Gateway.ViewModels
         public RelayCommand ConnectCommand { get; }
         public RelayCommand DisconnectCommand { get; }
 
-
-        //Temp for debugging
+        // Temp for debugging
         public RelayCommand ApplyUserAPlanCommand { get; }
         public RelayCommand ApplyUserBPlanCommand { get; }
         public RelayCommand RemoveUserBCommand { get; }
-
 
         public MainViewModel()
         {
             ApplyUserAPlanCommand = new RelayCommand(ApplyUserAPlan, CanPlanSelected);
             ApplyUserBPlanCommand = new RelayCommand(ApplyUserBPlan, CanPlanSelected);
             RemoveUserBCommand = new RelayCommand(RemoveUserB, CanPlanSelected);
-
 
             AddRobotCommand = new RelayCommand(AddRobot);
             RemoveRobotCommand = new RelayCommand(RemoveSelectedRobot, () => SelectedRobot != null);
@@ -75,15 +73,21 @@ namespace TwinSync_Gateway.ViewModels
             Reload();
         }
 
+        private bool CanPlanSelected()
+            => SelectedRobot?.Session != null && SelectedRobot.Status != RobotStatus.Disconnected;
+
+        private bool CanConnectSelected()
+            => SelectedRobot != null && SelectedRobot.Status == RobotStatus.Disconnected;
+
+        private bool CanDisconnectSelected()
+            => SelectedRobot != null && SelectedRobot.Status != RobotStatus.Disconnected;
+
         public async Task StartIotAsync()
         {
             if (_mqtt != null) return;
 
-            var tenantId = "default";
-            var gatewayId = "TwinSyncGateway-001";
-
             var endpointHost = "a2oo54s3mt6et0-ats.iot.us-east-1.amazonaws.com";
-            var mqttClientId = gatewayId;
+            var mqttClientId = GatewayId;
 
             var cert = LoadClientCertFromPfx(
                 pfxPath: @"C:\Users\jcollison\source\TwinSync_cert\TwinSyncGateway-001.pfx",
@@ -95,40 +99,44 @@ namespace TwinSync_Gateway.ViewModels
 
             await _mqtt.ConnectAsync(endpointHost, 8883, mqttClientId, cert, CancellationToken.None);
 
-            _rosterPublisher = new IotRosterPublisher(_mqtt, tenantId, gatewayId);
+            _rosterPublisher = new IotRosterPublisher(_mqtt, TenantId, GatewayId);
 
+            // ✅ Multi-device ingress routing:
+            // Given a DeviceKey (tenant/gateway/type/id), return the active session/target.
             _iotIngress = new IotPlanIngress(
                 mqtt: _mqtt,
-                tenantId: tenantId,
-                gatewayId: gatewayId,
-                getSessionByRobot: robotName =>
-                    Robots.FirstOrDefault(r => r.Name == robotName)?.Session
+                tenantId: TenantId,
+                gatewayId: GatewayId,
+                getTargetByKey: key =>
+                {
+                    // For now: only robots exist. We'll add PLC sessions later.
+                    // Match by device id == robot name.
+                    var vm = Robots.FirstOrDefault(r => r.Session != null && r.Session.Key.DeviceId == key.DeviceId);
+                    return vm?.Session as IPlanTarget;
+                }
             );
-            _iotIngress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT] {msg}");
 
+            _iotIngress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT] {msg}");
             await _iotIngress.SubscribeAsync(CancellationToken.None);
 
-            _iotEgress = new IotTelemetryEgress(_mqtt, tenantId, gatewayId);
+            _iotEgress = new IotDataEgress(_mqtt, TenantId, GatewayId);
             _iotEgress.Log += msg => System.Diagnostics.Debug.WriteLine($"[IoT-E] {msg}");
-            _iotEgress.Start(TimeSpan.FromMilliseconds(30)); // Publish Hz
+            _iotEgress.Start(TimeSpan.FromMilliseconds(30)); // publish tick
 
             await PublishRosterAsync();
         }
 
         public async Task StopIotAsync()
         {
-            // Stop publisher loop first (so no one tries to publish while disconnecting)
             if (_iotEgress != null)
             {
-                _iotEgress?.ClearAll();
+                try { _iotEgress.ClearAll(); } catch { }
                 try { await _iotEgress.DisposeAsync(); } catch { }
                 _iotEgress = null;
             }
 
-            // Ingress is just a router; nothing to dispose (unless you add disposal later)
             _iotIngress = null;
 
-            // Disconnect the shared MQTT connection last
             if (_mqtt != null)
             {
                 try { await _mqtt.DisposeAsync(); } catch { }
@@ -162,8 +170,6 @@ namespace TwinSync_Gateway.ViewModels
             return _rosterPublisher.PublishAsync(snapshot, CancellationToken.None);
         }
 
-
-
         private static X509Certificate2 LoadClientCertFromPfx(string pfxPath, string? password)
         {
             var cert = new X509Certificate2(
@@ -179,13 +185,6 @@ namespace TwinSync_Gateway.ViewModels
             return cert;
         }
 
-
-        private bool CanConnectSelected()
-            => SelectedRobot != null && SelectedRobot.Status == RobotStatus.Disconnected;
-
-        private bool CanDisconnectSelected()
-            => SelectedRobot != null && SelectedRobot.Status != RobotStatus.Disconnected;
-
         private async void ConnectSelected()
         {
             var vm = SelectedRobot;
@@ -195,13 +194,16 @@ namespace TwinSync_Gateway.ViewModels
             DisconnectCommand.RaiseCanExecuteChanged();
             ConnectCommand.RaiseCanExecuteChanged();
 
-
-            // Always create a fresh session on connect (simplest + most reliable)
+            // Always create a fresh session on connect
             if (vm.Session != null)
             {
                 try { await vm.Session.DisconnectAsync(); } catch { }
                 vm.Session = null;
             }
+
+            // Ensure the model name matches the VM name at connect time
+            // so session.Key.DeviceId is stable and matches roster + ingress routing.
+            vm.Model.Name = vm.Name;
 
             vm.Session = new RobotSession(vm.Model, () =>
             {
@@ -213,35 +215,30 @@ namespace TwinSync_Gateway.ViewModels
                 };
             });
 
-            // IMPORTANT: when the last user drops off (leave / lease timeout),
-            // robot streaming stops, so TelemetryUpdated won't fire again to trigger ClearRobot.
-            // Clear the AWS egress cache immediately on the transition to "no users".
-            vm.Session.ActiveUsersChanged += any =>
-            {
-                _iotEgress?.SetPublishEnabled(vm.Name, any);
-            };
+            var session = vm.Session;
+
+            // IMPORTANT: freeze the device identity at connect time.
+            // If the user renames later, we still publish under the connected identity.
+            var key = session.Key;
 
             ApplyUserAPlanCommand.RaiseCanExecuteChanged();
             ApplyUserBPlanCommand.RaiseCanExecuteChanged();
             RemoveUserBCommand.RaiseCanExecuteChanged();
 
+            if (_iotEgress == null)
+                System.Diagnostics.Debug.WriteLine("[IoT-E] Not started; telemetry will not publish to AWS IoT.");
 
-            //can remove this once all frame debugging is complete
-            //vm.Session.JointsUpdated += joints =>
-            //    {
-            //        Application.Current.Dispatcher.Invoke(() =>
-            //        {
-            //            vm.SetJoints(joints);   
-            //        });
-            //    };
-
-            vm.Session.TelemetryUpdated += frame =>
+            // ✅ Publish gating based on active users. allowed=false clears cached latest (egress invariant).
+            session.ActiveUsersChanged += hasAny =>
             {
-                // Only publish to AWS if at least one user is alive for this robot
-                if (vm.Session != null && vm.Session.HasAnyActiveUsers())
-                    _iotEgress?.Enqueue(vm.Name, frame);
+                try { _iotEgress?.SetPublishAllowed(key, hasAny); } catch { }
+            };
 
-                // Your existing UI/debug work stays the same
+            // ✅ Always enqueue frames; egress ignores them unless publish-allowed.
+            session.TelemetryUpdated += frame =>
+            {
+                try { _iotEgress?.Enqueue(key, frame); } catch { }
+
                 System.Diagnostics.Debug.WriteLine(
                     $"Frame: J={(frame.JointsDeg != null)} DI={(frame.DI?.Count ?? 0)} GI={(frame.GI?.Count ?? 0)} GO={(frame.GO?.Count ?? 0)}");
 
@@ -257,12 +254,12 @@ namespace TwinSync_Gateway.ViewModels
                 });
             };
 
-            vm.Session.StatusChanged += (status, error) =>
+            session.RobotStatusChanged += (status, error) =>
             {
-                // Marshal back onto UI thread
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     vm.SetStatus(status, error);
+
                     ConnectCommand.RaiseCanExecuteChanged();
                     DisconnectCommand.RaiseCanExecuteChanged();
                     ApplyUserAPlanCommand.RaiseCanExecuteChanged();
@@ -270,18 +267,23 @@ namespace TwinSync_Gateway.ViewModels
                     RemoveUserBCommand.RaiseCanExecuteChanged();
                 });
 
+                // ✅ Hardening: any disconnect/error disables publish + clears cache.
+                if (status == RobotStatus.Disconnected || status == RobotStatus.Error)
+                {
+                    try { _iotEgress?.SetPublishAllowed(key, false); } catch { }
+                }
+
                 _ = PublishRosterAsync();
             };
 
-
             try
             {
-                await vm.Session.ConnectAsync();
-                //await vm.Session.StartStreamingAsync(30); <-redundant if auto-starting in Session
+                await session.ConnectAsync();
             }
             catch (Exception ex)
             {
                 vm.SetStatus(RobotStatus.Error, ex.Message);
+                try { _iotEgress?.SetPublishAllowed(key, false); } catch { }
             }
             finally
             {
@@ -296,31 +298,36 @@ namespace TwinSync_Gateway.ViewModels
         private async void DisconnectSelected()
         {
             var vm = SelectedRobot;
-            if (vm?.Session == null) return;
+            var session = vm?.Session;
+            if (vm == null || session == null) return;
+
+            var key = session.Key;
 
             try
             {
-                // ✅ Stop MQTT publishing immediately + drop cached frame
-                _iotEgress?.ClearRobot(vm.Name);         
-                await vm.Session.StopStreamingAsync(); // optional if DisconnectAsync already does this
-                await vm.Session.DisconnectAsync();
-                ApplyUserAPlanCommand.RaiseCanExecuteChanged();
-                ApplyUserBPlanCommand.RaiseCanExecuteChanged();
-                RemoveUserBCommand.RaiseCanExecuteChanged();
+                // ✅ Must stop cloud publishing + drop cached frame regardless of streaming state
+                try { _iotEgress?.SetPublishAllowed(key, false); } catch { }
+
+                // Disconnect session
+                try { await session.StopStreamingAsync(); } catch { } // optional
+                await session.DisconnectAsync();
+
+                vm.Session = null;
             }
             catch
             {
                 vm.SetStatus(RobotStatus.Disconnected, null);
-                _iotEgress?.ClearRobot(vm.Name);
             }
             finally
             {
+                ApplyUserAPlanCommand.RaiseCanExecuteChanged();
+                ApplyUserBPlanCommand.RaiseCanExecuteChanged();
+                RemoveUserBCommand.RaiseCanExecuteChanged();
                 ConnectCommand.RaiseCanExecuteChanged();
                 DisconnectCommand.RaiseCanExecuteChanged();
             }
         }
 
-        // Existing Add/Remove/Save/Reload unchanged (keep your prior code)
         private void AddRobot()
         {
             var model = new RobotConfig
@@ -342,6 +349,13 @@ namespace TwinSync_Gateway.ViewModels
         private void RemoveSelectedRobot()
         {
             if (SelectedRobot == null) return;
+
+            var session = SelectedRobot.Session;
+            if (session != null)
+            {
+                try { _iotEgress?.SetPublishAllowed(session.Key, false); } catch { }
+            }
+
             Robots.Remove(SelectedRobot);
             SelectedRobot = Robots.FirstOrDefault();
 
@@ -357,7 +371,6 @@ namespace TwinSync_Gateway.ViewModels
                 Robots.Add(new RobotConfigViewModel(r));
 
             SelectedRobot = Robots.FirstOrDefault();
-
             _ = PublishRosterAsync();
         }
 
@@ -378,7 +391,6 @@ namespace TwinSync_Gateway.ViewModels
             var s = SelectedRobot?.Session;
             if (s == null) return;
 
-            // User A wants: DI 105, GI 1, GO 1
             s.SetUserPlan("userA", new TelemetryPlan(
                 DI: new[] { 105 },
                 GI: new[] { 1 },
@@ -391,8 +403,6 @@ namespace TwinSync_Gateway.ViewModels
             var s = SelectedRobot?.Session;
             if (s == null) return;
 
-            // User B wants: DI 113 + 105, GI 2, GO none
-            // (Union should become: DI {105,230}, GI {1,2}, GO {1})
             s.SetUserPlan("userB", new TelemetryPlan(
                 DI: new[] { 113, 105 },
                 GI: new[] { 2 },

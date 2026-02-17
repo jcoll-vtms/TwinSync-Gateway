@@ -25,6 +25,9 @@ namespace TwinSync_Gateway.Services
         // Reuse builder to avoid per-line allocations
         private readonly StringBuilder _lineSb = new();
 
+        public bool IsConnected
+            => _client != null && _client.Connected && _stream != null;
+
         public async Task ConnectAsync(RobotConfig config, CancellationToken ct)
         {
             using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -63,6 +66,16 @@ namespace TwinSync_Gateway.Services
 
                 throw new IOException($"Unexpected HELLO response: '{line}'");
             }
+        }
+
+        /// <summary>
+        /// Graceful disconnect. KAREL server doesn't have an explicit BYE,
+        /// so we just close the socket and release buffers. Idempotent.
+        /// </summary>
+        public Task DisconnectAsync(CancellationToken ct = default)
+        {
+            // For TCP client: dispose is enough, but keep API consistent.
+            return Task.CompletedTask;
         }
 
         public async Task SendCommandAsync(string cmd, CancellationToken ct)
@@ -135,6 +148,12 @@ namespace TwinSync_Gateway.Services
 
         public ValueTask DisposeAsync()
         {
+            CloseAndReset();
+            return ValueTask.CompletedTask;
+        }
+
+        private void CloseAndReset()
+        {
             try { _stream?.Close(); } catch { }
             try { _client?.Close(); } catch { }
 
@@ -146,14 +165,12 @@ namespace TwinSync_Gateway.Services
 
             if (_buf != null)
             {
-                ArrayPool<byte>.Shared.Return(_buf);
+                try { ArrayPool<byte>.Shared.Return(_buf); } catch { }
                 _buf = null;
             }
 
             _bufLen = 0;
             _bufPos = 0;
-
-            return ValueTask.CompletedTask;
         }
     }
 }

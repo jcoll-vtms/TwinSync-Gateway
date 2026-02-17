@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using TwinSync_Gateway.Models;
@@ -46,7 +44,7 @@ namespace TwinSync_Gateway.ViewModels
         public string LastTelemetryText =>
             LastTelemetryAt == default
                 ? ""
-                : $"Updated {LastTelemetryAt:HH:mm:ss.fff}";
+                : $"Updated {LastTelemetryAt.LocalDateTime:HH:mm:ss.fff}";
 
         private IReadOnlyDictionary<int, int>? _lastDI;
         public IReadOnlyDictionary<int, int>? LastDI
@@ -94,7 +92,7 @@ namespace TwinSync_Gateway.ViewModels
 
         public void SetJoints(double[] joints)
         {
-            if (joints.Length < 6) return;
+            if (joints is null || joints.Length < 6) return;
             J1 = joints[0];
             J2 = joints[1];
             J3 = joints[2];
@@ -117,18 +115,92 @@ namespace TwinSync_Gateway.ViewModels
         }
 
         // Runtime worker handle (created when connecting)
+        // Keep RobotSession for now; later this becomes a device-agnostic interface.
         internal RobotSession? Session { get; set; }
 
-        public RobotConfigViewModel(RobotConfig model) => Model = model;
+        public RobotConfigViewModel(RobotConfig model)
+        {
+            Model = model ?? throw new ArgumentNullException(nameof(model));
+        }
 
-        // Existing properties (Name, IpAddress, etc.) unchanged…
+        // Properties bound to UI
+        public string Name
+        {
+            get => Model.Name;
+            set
+            {
+                if (Model.Name != value)
+                {
+                    Model.Name = value;
+                    Raise();
+                }
+            }
+        }
 
-        public string Name { get => Model.Name; set { if (Model.Name != value) { Model.Name = value; Raise(); } } }
-        public ConnectionType ConnectionType { get => Model.ConnectionType; set { if (Model.ConnectionType != value) { Model.ConnectionType = value; Raise(); } } }
-        public string IpAddress { get => Model.IpAddress; set { if (Model.IpAddress != value) { Model.IpAddress = value; Raise(); } } }
-        public int KarelPort { get => Model.KarelPort; set { if (Model.KarelPort != value) { Model.KarelPort = value; Raise(); } } }
-        public string? PcdkRobotName { get => Model.PcdkRobotName; set { if (Model.PcdkRobotName != value) { Model.PcdkRobotName = value; Raise(); } } }
-        public int PcdkTimeoutMs { get => Model.PcdkTimeoutMs; set { if (Model.PcdkTimeoutMs != value) { Model.PcdkTimeoutMs = value; Raise(); } } }
+        public ConnectionType ConnectionType
+        {
+            get => Model.ConnectionType;
+            set
+            {
+                if (Model.ConnectionType != value)
+                {
+                    Model.ConnectionType = value;
+                    Raise();
+                }
+            }
+        }
+
+        public string IpAddress
+        {
+            get => Model.IpAddress;
+            set
+            {
+                if (Model.IpAddress != value)
+                {
+                    Model.IpAddress = value;
+                    Raise();
+                }
+            }
+        }
+
+        public int KarelPort
+        {
+            get => Model.KarelPort;
+            set
+            {
+                if (Model.KarelPort != value)
+                {
+                    Model.KarelPort = value;
+                    Raise();
+                }
+            }
+        }
+
+        public string? PcdkRobotName
+        {
+            get => Model.PcdkRobotName;
+            set
+            {
+                if (Model.PcdkRobotName != value)
+                {
+                    Model.PcdkRobotName = value;
+                    Raise();
+                }
+            }
+        }
+
+        public int PcdkTimeoutMs
+        {
+            get => Model.PcdkTimeoutMs;
+            set
+            {
+                if (Model.PcdkTimeoutMs != value)
+                {
+                    Model.PcdkTimeoutMs = value;
+                    Raise();
+                }
+            }
+        }
 
         internal void SetStatus(RobotStatus status, string? error = null)
         {

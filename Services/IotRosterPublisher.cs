@@ -1,6 +1,10 @@
 ﻿using MQTTnet.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
-using System.Windows.Interop;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TwinSync_Gateway.Services
 {
@@ -17,34 +21,79 @@ namespace TwinSync_Gateway.Services
             _gatewayId = gatewayId;
         }
 
-        public async Task PublishAsync(IEnumerable<(string Name, string Status, string ConnectionType, long? LastTelemetryMs)> robots, CancellationToken ct)
+        /// <summary>
+        /// Backward compatible robot roster publish.
+        /// ALSO publishes the new device roster format at /devices.
+        /// </summary>
+        public async Task PublishAsync(
+            IEnumerable<(string Name, string Status, string ConnectionType, long? LastTelemetryMs)> robots,
+            CancellationToken ct)
         {
             if (!_mqtt.IsConnected) return;
 
-            var topic = $"twinsync/{_tenantId}/{_gatewayId}/robots";
-            System.Diagnostics.Debug.WriteLine($"[Roster] {topic}");
+            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            var payload = new
+            // Legacy topic/payload (robot-specific)
+            var legacyTopic = $"twinsync/{_tenantId}/{_gatewayId}/robots";
+
+            var legacyPayload = new
             {
-                ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                ts = nowMs,
                 tenantId = _tenantId,
                 gatewayId = _gatewayId,
-                robots = robots.Select(r => new { name = r.Name, status = r.Status, connectionType = r.ConnectionType, lastTelemetryMs = r.LastTelemetryMs }).ToArray()
+                robots = robots.Select(r => new
+                {
+                    name = r.Name,
+                    status = r.Status,
+                    connectionType = r.ConnectionType,
+                    lastTelemetryMs = r.LastTelemetryMs
+                }).ToArray()
             };
 
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+            // New topic/payload (multi-device)
+            var devicesTopic = $"twinsync/{_tenantId}/{_gatewayId}/devices";
+
+            var devicesPayload = new
+            {
+                ts = nowMs,
+                tenantId = _tenantId,
+                gatewayId = _gatewayId,
+                devices = robots.Select(r => new
+                {
+                    deviceId = r.Name,
+                    deviceType = "robot",
+                    displayName = r.Name,
+                    status = r.Status,
+                    connectionType = r.ConnectionType,
+                    lastDataMs = r.LastTelemetryMs
+                }).ToArray()
+            };
 
             try
             {
-                await _mqtt.PublishAsync(topic, bytes, MqttQualityOfServiceLevel.AtLeastOnce, retain: true, ct).ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"[Roster] Published bytes={bytes.Length}");
+                var legacyBytes = JsonSerializer.SerializeToUtf8Bytes(legacyPayload);
+                await _mqtt.PublishAsync(
+                    legacyTopic,
+                    legacyBytes,
+                    qos: MqttQualityOfServiceLevel.AtLeastOnce,
+                    retain: true,
+                    ct).ConfigureAwait(false);
+
+                var devicesBytes = JsonSerializer.SerializeToUtf8Bytes(devicesPayload);
+                await _mqtt.PublishAsync(
+                    devicesTopic,
+                    devicesBytes,
+                    qos: MqttQualityOfServiceLevel.AtLeastOnce,
+                    retain: true,
+                    ct).ConfigureAwait(false);
+
+                System.Diagnostics.Debug.WriteLine($"[Roster] Published legacy bytes={legacyBytes.Length} and devices bytes={devicesBytes.Length}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Roster] Publish FAILED: {ex}");
-                // swallow — roster is best-effort
+                // roster is best-effort
             }
         }
-
     }
 }
