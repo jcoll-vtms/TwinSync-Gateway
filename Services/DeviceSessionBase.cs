@@ -11,6 +11,7 @@ namespace TwinSync_Gateway.Services
         private Task? _runTask;
 
         public DeviceKey Key { get; }
+
         public DeviceStatus Status { get; private set; } = DeviceStatus.Disconnected;
 
         public event Action<DeviceStatus, Exception?>? StatusChanged;
@@ -18,7 +19,7 @@ namespace TwinSync_Gateway.Services
         public event Action<bool>? PublishAllowedChanged;
 
         private bool _publishAllowed;
-        protected bool IsPublishAllowed => _publishAllowed; // ✅ add this
+        protected bool IsPublishAllowed => _publishAllowed;
 
         /// <summary>
         /// Default behavior: only read frames when publish is allowed.
@@ -44,13 +45,15 @@ namespace TwinSync_Gateway.Services
             PublishAllowedChanged?.Invoke(allowed);
         }
 
-        public async Task ConnectAsync()
+        public Task ConnectAsync() => ConnectAsync(CancellationToken.None);
+
+        public async Task ConnectAsync(CancellationToken ct)
         {
             if (Status != DeviceStatus.Disconnected) return;
 
             SetStatus(DeviceStatus.Connecting, null);
 
-            _runCts = new CancellationTokenSource();
+            _runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             try
             {

@@ -1,6 +1,10 @@
-﻿using MQTTnet;
+﻿// =====================================================
+// COMPLETE REPLACEMENT: IotPlanIngress.cs
+// =====================================================
+using MQTTnet;
 using MQTTnet.Protocol;
 using System;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -9,12 +13,25 @@ using TwinSync_Gateway.Models;
 
 namespace TwinSync_Gateway.Services
 {
+    /// <summary>
+    /// Ingress for plan/hb/leave messages from AWS IoT.
+    ///
+    /// Supports BOTH:
+    ///  - tenant legacy: twinsync/{tenantId}/{gatewayId}/{verb}/{deviceId}/{userId}
+    ///  - multi-device:  twinsync/{tenantId}/{gatewayId}/{verb}/{deviceType}/{deviceId}/{userId}
+    ///
+    /// You committed to multi-device topics; tenant legacy is kept for compatibility.
+    /// </summary>
     public sealed class IotPlanIngress
     {
         private readonly string _tenantId;
         private readonly string _gatewayId;
         private readonly Func<DeviceKey, IPlanTarget?> _getTargetByKey;
         private readonly IotMqttConnection _mqtt;
+
+        // IMPORTANT: must match RobotSession.Key.DeviceType for legacy tenant topics
+        // because tenant-legacy topics don't include deviceType in the path.
+        private const string LegacyDefaultDeviceType = "fanuc-karel";
 
         public event Action<string>? Log;
 
@@ -24,10 +41,10 @@ namespace TwinSync_Gateway.Services
             string gatewayId,
             Func<DeviceKey, IPlanTarget?> getTargetByKey)
         {
-            _mqtt = mqtt;
-            _tenantId = tenantId;
-            _gatewayId = gatewayId;
-            _getTargetByKey = getTargetByKey;
+            _mqtt = mqtt ?? throw new ArgumentNullException(nameof(mqtt));
+            _tenantId = tenantId ?? throw new ArgumentNullException(nameof(tenantId));
+            _gatewayId = gatewayId ?? throw new ArgumentNullException(nameof(gatewayId));
+            _getTargetByKey = getTargetByKey ?? throw new ArgumentNullException(nameof(getTargetByKey));
 
             _mqtt.AddMessageHandler(OnMessageAsync);
         }
@@ -36,29 +53,34 @@ namespace TwinSync_Gateway.Services
         {
             var qos = MqttQualityOfServiceLevel.AtLeastOnce;
 
-            // Legacy topics
-            //await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/plan/+/+", qos, ct);
-            //await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/hb/+/+", qos, ct);
-            //await _mqtt.SubscribeAsync($"twinsync/{_gatewayId}/leave/+/+", qos, ct);
-
-            // Tenant-scoped legacy topics
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/plan/+/+", qos, ct);
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/hb/+/+", qos, ct);
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/leave/+/+", qos, ct);
-
-            // New multi-device topics
+            // ✅ Only multi-device topics:
             // twinsync/{tenantId}/{gatewayId}/{verb}/{deviceType}/{deviceId}/{userId}
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/plan/+/+/+", qos, ct);
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/hb/+/+/+", qos, ct);
-            await _mqtt.SubscribeAsync($"twinsync/{_tenantId}/{_gatewayId}/leave/+/+/+", qos, ct);
+            await TrySubAsync($"twinsync/{_tenantId}/{_gatewayId}/plan/+/+/+", qos, ct).ConfigureAwait(false);
+            await TrySubAsync($"twinsync/{_tenantId}/{_gatewayId}/hb/+/+/+", qos, ct).ConfigureAwait(false);
+            await TrySubAsync($"twinsync/{_tenantId}/{_gatewayId}/leave/+/+/+", qos, ct).ConfigureAwait(false);
 
-            Log?.Invoke("Ingress subscriptions active.");
+            Log?.Invoke("Ingress subscriptions active (multi-device only).");
+        }
+
+        private async Task TrySubAsync(string filter, MqttQualityOfServiceLevel qos, CancellationToken ct)
+        {
+            try
+            {
+                await _mqtt.SubscribeAsync(filter, qos, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Don't fail ingress startup if a single filter errors.
+                Log?.Invoke($"Subscribe failed '{filter}': {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private Task OnMessageAsync(MqttApplicationMessage msg)
         {
             try
             {
+                if (msg == null) return Task.CompletedTask;
+
                 if (!TryParseTopic(msg.Topic, out var verb, out var key, out var userId))
                     return Task.CompletedTask;
 
@@ -66,7 +88,7 @@ namespace TwinSync_Gateway.Services
             }
             catch (Exception ex)
             {
-                Log?.Invoke($"IoT ingress handler error: {ex.Message}");
+                Log?.Invoke($"IoT ingress handler error: {ex.GetType().Name}: {ex.Message}");
             }
 
             return Task.CompletedTask;
@@ -78,55 +100,23 @@ namespace TwinSync_Gateway.Services
             userId = string.Empty;
             key = default;
 
-            // Accepted:
-            // 1) twinsync/{gatewayId}/{verb}/{robot}/{user}
-            // 2) twinsync/{tenantId}/{gatewayId}/{verb}/{robot}/{user}
-            // 3) twinsync/{tenantId}/{gatewayId}/{verb}/{deviceType}/{deviceId}/{user}
+            // Accepted only:
+            // twinsync/{tenantId}/{gatewayId}/{verb}/{deviceType}/{deviceId}/{userId}
 
             var parts = topic.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 5) return false;
+            if (parts.Length != 7) return false;
             if (!parts[0].Equals("twinsync", StringComparison.OrdinalIgnoreCase)) return false;
 
-            // (1) legacy
-            if (parts.Length == 5 &&
-                parts[1].Equals(_gatewayId, StringComparison.Ordinal))
-            {
-                verb = parts[2];
-                var robotName = parts[3];
-                userId = parts[4];
+            if (!parts[1].Equals(_tenantId, StringComparison.Ordinal)) return false;
+            if (!parts[2].Equals(_gatewayId, StringComparison.Ordinal)) return false;
 
-                key = new DeviceKey(_tenantId, _gatewayId, robotName, "robot");
-                return true;
-            }
+            verb = parts[3];
+            var deviceType = parts[4];
+            var deviceId = parts[5];
+            userId = parts[6];
 
-            // (2) tenant legacy
-            if (parts.Length == 6 &&
-                parts[1].Equals(_tenantId, StringComparison.Ordinal) &&
-                parts[2].Equals(_gatewayId, StringComparison.Ordinal))
-            {
-                verb = parts[3];
-                var robotName = parts[4];
-                userId = parts[5];
-
-                key = new DeviceKey(_tenantId, _gatewayId, robotName, "robot");
-                return true;
-            }
-
-            // (3) new multi-device
-            if (parts.Length == 7 &&
-                parts[1].Equals(_tenantId, StringComparison.Ordinal) &&
-                parts[2].Equals(_gatewayId, StringComparison.Ordinal))
-            {
-                verb = parts[3];
-                var deviceType = parts[4];
-                var deviceId = parts[5];
-                userId = parts[6];
-
-                key = new DeviceKey(_tenantId, _gatewayId, deviceId, deviceType);
-                return true;
-            }
-
-            return false;
+            key = new DeviceKey(_tenantId, _gatewayId, deviceId, deviceType);
+            return true;
         }
 
         private void HandleParsedMessage(string verb, DeviceKey key, string userId, ArraySegment<byte> payloadSegment)
@@ -178,7 +168,8 @@ namespace TwinSync_Gateway.Services
                     GI: env.gi ?? Array.Empty<int>(),
                     GO: env.go ?? Array.Empty<int>());
 
-                // Only robots will implement this today. PLC targets can no-op.
+                // Your IPlanTarget already contains ApplyTelemetryPlan (robot only).
+                // PLC targets can no-op or ignore, but ideally they won't receive telemetry topics.
                 target.ApplyTelemetryPlan(userId, plan, env.periodMs);
 
                 Log?.Invoke(
@@ -188,8 +179,21 @@ namespace TwinSync_Gateway.Services
 
             if (kind.Equals("machineData", StringComparison.OrdinalIgnoreCase))
             {
-                // Reserved for PLC plan evolution (tags/registers/etc).
-                Log?.Invoke($"MachineData plan received user='{userId}' key='{key}' (not implemented yet).");
+                if (target is not IMachineDataPlanTarget plcTarget)
+                {
+                    Log?.Invoke($"MachineData plan ignored (target not PLC) user='{userId}' key='{key}'");
+                    return;
+                }
+
+                var items = (env.items ?? Array.Empty<PlanItem>())
+                    .Where(i => !string.IsNullOrWhiteSpace(i.path))
+                    .Select(i => new MachineDataPlanItem(i.path!.Trim(), i.expand))
+                    .ToArray();
+
+                var plan = new MachineDataPlan(items);
+                plcTarget.ApplyMachineDataPlan(userId, plan, env.periodMs);
+
+                Log?.Invoke($"MachineData plan user='{userId}' key='{key}' items={items.Length} periodMs={env.periodMs?.ToString() ?? "null"}");
                 return;
             }
 
@@ -200,15 +204,29 @@ namespace TwinSync_Gateway.Services
 
         private sealed class PlanEnvelope
         {
-            public string? kind { get; set; }      // "telemetry" | "machineData" ...
+            public string? kind { get; set; }      // "telemetry" | "machineData"
             public int[]? di { get; set; }
             public int[]? gi { get; set; }
             public int[]? go { get; set; }
             public int? periodMs { get; set; }
 
-            // future:
-            // public string[]? tags { get; set; }
-            // public string[]? registers { get; set; }
+            // machineData:
+            public PlanItem[]? items { get; set; }
         }
+
+        private sealed class PlanItem
+        {
+            public string? path { get; set; }
+            public string? expand { get; set; } // null | "udt"
+        }
+    }
+
+    /// <summary>
+    /// PLC plan target (new). Keep this separate from IPlanTarget to avoid duplication.
+    /// PLC sessions implement this in addition to IPlanTarget.
+    /// </summary>
+    public interface IMachineDataPlanTarget : IPlanTarget
+    {
+        void ApplyMachineDataPlan(string userId, MachineDataPlan plan, int? periodMs);
     }
 }

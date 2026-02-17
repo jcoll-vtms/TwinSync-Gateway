@@ -1,4 +1,7 @@
-﻿using MQTTnet.Protocol;
+﻿// =====================================================
+// COMPLETE REPLACEMENT: IotDataEgress.cs
+// =====================================================
+using MQTTnet.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,34 +12,34 @@ using TwinSync_Gateway.Models;
 
 namespace TwinSync_Gateway.Services
 {
+    /// <summary>
+    /// Cloud publisher for device frames.
+    ///
+    /// Critical invariants:
+    ///  - Disable publish => clear cached latest frame
+    ///  - Enqueue ignores frames unless enabled (prevents ghost cache refilling)
+    /// </summary>
     public sealed class IotDataEgress : IAsyncDisposable
     {
         private readonly IotMqttConnection _mqtt;
 
         private readonly object _gate = new();
 
-        // Publish allow-list + last-known frame cache
         private readonly HashSet<DeviceKey> _enabled = new();
         private readonly Dictionary<DeviceKey, IDeviceFrame> _latest = new();
 
         private CancellationTokenSource? _cts;
         private Task? _pumpTask;
 
-        // MQTT publish sequence (debug)
-        private long _seq;
+        private long _publishSeq;
 
         public event Action<string>? Log;
 
         public IotDataEgress(IotMqttConnection mqtt, string tenantId, string gatewayId)
         {
-            // tenantId/gatewayId kept for compatibility, but we publish using DeviceKey values
-            _mqtt = mqtt;
+            _mqtt = mqtt ?? throw new ArgumentNullException(nameof(mqtt));
         }
 
-        /// <summary>
-        /// Enables/disables publishing for a device.
-        /// REQUIRED INVARIANT: allowed=false MUST clear cached latest frame.
-        /// </summary>
         public void SetPublishAllowed(DeviceKey key, bool allowed)
         {
             lock (_gate)
@@ -44,7 +47,7 @@ namespace TwinSync_Gateway.Services
                 if (!allowed)
                 {
                     _enabled.Remove(key);
-                    _latest.Remove(key); // ✅ critical: prevents stale republish forever
+                    _latest.Remove(key);
                     return;
                 }
 
@@ -52,9 +55,6 @@ namespace TwinSync_Gateway.Services
             }
         }
 
-        /// <summary>
-        /// Hard-remove a device from egress state (alias for disable+clear).
-        /// </summary>
         public void ClearDevice(DeviceKey key)
         {
             lock (_gate)
@@ -64,9 +64,6 @@ namespace TwinSync_Gateway.Services
             }
         }
 
-        /// <summary>
-        /// Clear all cached frames and disable all devices.
-        /// </summary>
         public void ClearAll()
         {
             lock (_gate)
@@ -109,10 +106,6 @@ namespace TwinSync_Gateway.Services
             }
         }
 
-        /// <summary>
-        /// Enqueue a new frame. If device is not publish-allowed, ignore it.
-        /// This prevents "ghost cache refilling" after disable.
-        /// </summary>
         public void Enqueue(DeviceKey key, IDeviceFrame frame)
         {
             if (frame == null) return;
@@ -153,7 +146,7 @@ namespace TwinSync_Gateway.Services
                 catch (OperationCanceledException) { }
                 catch (Exception ex)
                 {
-                    Log?.Invoke($"Data pump error: {ex.Message}");
+                    Log?.Invoke($"Data pump error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }
@@ -162,44 +155,47 @@ namespace TwinSync_Gateway.Services
         {
             if (!_mqtt.IsConnected) return;
 
-            // For now: only robot telemetry frames are supported on this topic/payload.
-            // PLC "machine data" will become another frame type + payload shape later.
-            if (frame is not TelemetryFrame tf)
+            // Canonical multi-device data topic:
+            // twinsync/{tenant}/{gateway}/data/{deviceType}/{deviceId}
+            var topic = $"twinsync/{key.TenantId}/{key.GatewayId}/data/{key.DeviceType}/{key.DeviceId}";
+
+            var pubSeq = Interlocked.Increment(ref _publishSeq);
+
+            object payload = frame switch
             {
-                // optional: helpful during bring-up
-                // Log?.Invoke($"Ignoring unsupported frame type '{frame.GetType().Name}' for {key}");
-                return;
-            }
-
-            var seq = Interlocked.Increment(ref _seq);
-
-            // Prefer the tenant-scoped topic going forward.
-            var tenantTopic = $"twinsync/{key.TenantId}/{key.GatewayId}/telemetry/{key.DeviceId}";
-
-            // Optional legacy topic (remove when you're ready)
-            var legacyTopic = $"twinsync/{key.GatewayId}/telemetry/{key.DeviceId}";
-
-            var payload = new TelemetryOut
-            {
-                seq = seq,
-                ts = tf.Timestamp.ToUnixTimeMilliseconds(),
-                j = tf.JointsDeg,
-                di = tf.DI != null ? ToStringKeyDict(tf.DI) : null,
-                gi = tf.GI != null ? ToStringKeyDict(tf.GI) : null,
-                go = tf.GO != null ? ToStringKeyDict(tf.GO) : null
+                TelemetryFrame tf => new TelemetryPayload
+                {
+                    j = tf.JointsDeg,
+                    di = tf.DI != null ? ToStringKeyDict(tf.DI) : null,
+                    gi = tf.GI != null ? ToStringKeyDict(tf.GI) : null,
+                    go = tf.GO != null ? ToStringKeyDict(tf.GO) : null
+                },
+                PlcFrame pf => new PlcPayload
+                {
+                    values = pf.Values != null
+                        ? pf.Values.ToDictionary(k => k.Key, v => ToJsonPlcValue(v.Value))
+                        : new Dictionary<string, object?>()
+                },
+                _ => new UnknownPayload
+                {
+                    type = frame.GetType().Name
+                }
             };
 
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+            var envelope = new DataEnvelope
+            {
+                pubSeq = pubSeq,
+                ts = frame.Timestamp.ToUnixTimeMilliseconds(),
+                frameSeq = frame.Sequence,
+                deviceType = key.DeviceType,
+                deviceId = key.DeviceId,
+                payload = payload
+            };
+
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(envelope);
 
             await _mqtt.PublishAsync(
-                legacyTopic,
-                bytes,
-                qos: MqttQualityOfServiceLevel.AtMostOnce,
-                retain: false,
-                ct).ConfigureAwait(false);
-
-            await _mqtt.PublishAsync(
-                tenantTopic,
+                topic,
                 bytes,
                 qos: MqttQualityOfServiceLevel.AtMostOnce,
                 retain: false,
@@ -214,14 +210,69 @@ namespace TwinSync_Gateway.Services
             return d;
         }
 
-        private sealed class TelemetryOut
+        private static object? ToJsonPlcValue(PlcValue v)
         {
-            public long seq { get; set; }
+            // JSON-friendly: { k: "...", v: ... }
+            return v.Kind switch
+            {
+                PlcValueKind.Null => new { k = "Null", v = (object?)null },
+
+                PlcValueKind.Bool => new { k = "Bool", v = v.Value is bool b ? b : Convert.ToBoolean(v.Value) },
+
+                PlcValueKind.Int32 => new { k = "Int32", v = v.Value == null ? 0 : Convert.ToInt32(v.Value) },
+                PlcValueKind.Int64 => new { k = "Int64", v = v.Value == null ? 0L : Convert.ToInt64(v.Value) },
+
+                PlcValueKind.Float => new { k = "Float", v = v.Value == null ? 0f : Convert.ToSingle(v.Value) },
+                PlcValueKind.Double => new { k = "Double", v = v.Value == null ? 0d : Convert.ToDouble(v.Value) },
+
+                PlcValueKind.String => new { k = "String", v = v.Value?.ToString() },
+
+                PlcValueKind.Bytes => new { k = "Bytes", v = v.Value is byte[] b ? Convert.ToBase64String(b) : null },
+
+                PlcValueKind.Array => new
+                {
+                    k = "Array",
+                    v = v.Value is PlcValue[] arr ? arr.Select(ToJsonPlcValue).ToArray() : Array.Empty<object?>()
+                },
+
+                PlcValueKind.Struct => new
+                {
+                    k = "Struct",
+                    v = v.Value is Dictionary<string, PlcValue> dict
+                        ? dict.ToDictionary(kv => kv.Key, kv => ToJsonPlcValue(kv.Value))
+                        : new Dictionary<string, object?>()
+                },
+
+                _ => new { k = "Unknown", v = v.Value }
+            };
+        }
+
+        private sealed class DataEnvelope
+        {
+            public long pubSeq { get; set; }
             public long ts { get; set; }
+            public long frameSeq { get; set; }
+            public string? deviceType { get; set; }
+            public string? deviceId { get; set; }
+            public object? payload { get; set; }
+        }
+
+        private sealed class TelemetryPayload
+        {
             public double[]? j { get; set; }
             public Dictionary<string, int>? di { get; set; }
             public Dictionary<string, int>? gi { get; set; }
             public Dictionary<string, int>? go { get; set; }
+        }
+
+        private sealed class PlcPayload
+        {
+            public Dictionary<string, object?> values { get; set; } = new();
+        }
+
+        private sealed class UnknownPayload
+        {
+            public string? type { get; set; }
         }
 
         public async ValueTask DisposeAsync()

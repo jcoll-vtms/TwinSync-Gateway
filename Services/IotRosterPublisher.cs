@@ -33,24 +33,7 @@ namespace TwinSync_Gateway.Services
 
             var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            // Legacy topic/payload (robot-specific)
-            var legacyTopic = $"twinsync/{_tenantId}/{_gatewayId}/robots";
-
-            var legacyPayload = new
-            {
-                ts = nowMs,
-                tenantId = _tenantId,
-                gatewayId = _gatewayId,
-                robots = robots.Select(r => new
-                {
-                    name = r.Name,
-                    status = r.Status,
-                    connectionType = r.ConnectionType,
-                    lastTelemetryMs = r.LastTelemetryMs
-                }).ToArray()
-            };
-
-            // New topic/payload (multi-device)
+            // ✅ Only new topic/payload (multi-device)
             var devicesTopic = $"twinsync/{_tenantId}/{_gatewayId}/devices";
 
             var devicesPayload = new
@@ -61,7 +44,7 @@ namespace TwinSync_Gateway.Services
                 devices = robots.Select(r => new
                 {
                     deviceId = r.Name,
-                    deviceType = "robot",
+                    deviceType = "fanuc-karel",   // ✅ match RobotSession.Key.DeviceType
                     displayName = r.Name,
                     status = r.Status,
                     connectionType = r.ConnectionType,
@@ -71,14 +54,6 @@ namespace TwinSync_Gateway.Services
 
             try
             {
-                var legacyBytes = JsonSerializer.SerializeToUtf8Bytes(legacyPayload);
-                await _mqtt.PublishAsync(
-                    legacyTopic,
-                    legacyBytes,
-                    qos: MqttQualityOfServiceLevel.AtLeastOnce,
-                    retain: true,
-                    ct).ConfigureAwait(false);
-
                 var devicesBytes = JsonSerializer.SerializeToUtf8Bytes(devicesPayload);
                 await _mqtt.PublishAsync(
                     devicesTopic,
@@ -87,13 +62,13 @@ namespace TwinSync_Gateway.Services
                     retain: true,
                     ct).ConfigureAwait(false);
 
-                System.Diagnostics.Debug.WriteLine($"[Roster] Published legacy bytes={legacyBytes.Length} and devices bytes={devicesBytes.Length}");
+                System.Diagnostics.Debug.WriteLine($"[Roster] Published devices bytes={devicesBytes.Length}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Roster] Publish FAILED: {ex}");
-                // roster is best-effort
             }
         }
+
     }
 }
