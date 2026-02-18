@@ -8,10 +8,30 @@
     ".NETCoreApp,Version=v8.0": {
       "TwinSync Gateway/1.0.0": {
         "dependencies": {
-          "MQTTnet": "4.3.7.1207"
+          "MQTTnet": "4.3.7.1207",
+          "libplctag": "1.5.2"
         },
         "runtime": {
           "TwinSync Gateway.dll": {}
+        }
+      },
+      "libplctag/1.5.2": {
+        "dependencies": {
+          "libplctag.NativeImport": "1.0.41"
+        },
+        "runtime": {
+          "lib/netstandard2.0/libplctag.dll": {
+            "assemblyVersion": "1.5.2.0",
+            "fileVersion": "1.5.2.0"
+          }
+        }
+      },
+      "libplctag.NativeImport/1.0.41": {
+        "runtime": {
+          "lib/netstandard2.0/libplctag.NativeImport.dll": {
+            "assemblyVersion": "1.0.41.0",
+            "fileVersion": "1.0.41.0"
+          }
         }
       },
       "MQTTnet/4.3.7.1207": {
@@ -29,6 +49,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "libplctag/1.5.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-v16WtxKMr6YiPc/ws5C/MdhOvZgLrlDwJ1FQPB4PLrWNpBQXr8fUXaHI12rl3sNyJZ2ocB+zeSPUDFT8zK4pDA==",
+      "path": "libplctag/1.5.2",
+      "hashPath": "libplctag.1.5.2.nupkg.sha512"
+    },
+    "libplctag.NativeImport/1.0.41": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cm7TXwCMg4lALRtP/XJzxI4db9qYcRPB7kglPfDOqiNE1PQ4O/gOC5KPCwoGhIw07FBKvVDnl5sjbXS3iK2tEw==",
+      "path": "libplctag.nativeimport/1.0.41",
+      "hashPath": "libplctag.nativeimport.1.0.41.nupkg.sha512"
     },
     "MQTTnet/4.3.7.1207": {
       "type": "package",

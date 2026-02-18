@@ -30,6 +30,8 @@ namespace TwinSync_Gateway.ViewModels
         private readonly List<PlcSession> _plcSessions = new();
         private readonly Dictionary<DeviceKey, DateTimeOffset> _plcLastFrameAt = new();
 
+        private bool _useSimPlc = false; // flip to false for real PLC
+
         // Central ingress routing registry (FULL DeviceKey)
         private readonly Dictionary<DeviceKey, IPlanTarget> _targets = new();
 
@@ -206,7 +208,8 @@ namespace TwinSync_Gateway.ViewModels
                     tenantId: TenantId,
                     gatewayId: GatewayId,
                     config: cfg,
-                    transportFactory: () => new SimPlcTransport());
+                    transportFactory: () => _useSimPlc ? new SimPlcTransport() : new LibPlcTagTransport());
+
 
                 WirePlcSession(session);
 

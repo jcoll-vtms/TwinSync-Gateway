@@ -1,0 +1,41 @@
+
+    Subscribe:
+
+        twinsync/default/TwinSyncGateway-001/plan/*/*/*
+        twinsync/default/TwinSyncGateway-001/hb/*/*/*
+        twinsync/default/TwinSyncGateway-001/leave/*/*/*
+
+
+    Publish:
+
+        twinsync/default/TwinSyncGateway-001/data/*/*
+        twinsync/default/TwinSyncGateway-001/robots
+        twinsync/default/TwinSyncGateway-001/devices
+
+
+        PLC client topic post example:
+        twinsync/default/TwinSyncGateway-001/plan/plc-ab/SimPlc1/User1
+
+        Payload
+        {
+          "kind": "machineData",
+          "items": [
+            { "path": "Program:MainProgram.PartCount" },
+            { "path": "Program:MainProgram.MotorRunning" }
+          ],
+          "periodMs": 500
+        }
+
+
+        PLC client topic subscribe example:
+        twinsync/default/TwinSyncGateway-001/data/plc-ab/SimPlc1
+
+        Robot client topic post example:
+        twinsync/default/TwinSyncGateway-001/plan/fanuc-karel/Robot1/User1
+
+        Payload
+        {"di":[102,103,104]}
+
+
+        Robot client topic subscribe example:
+        twinsync/default/TwinSyncGateway-001/data/fanuc-karel/Robot1

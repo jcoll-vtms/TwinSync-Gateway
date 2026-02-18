@@ -2,6 +2,35 @@
   "version": 3,
   "targets": {
     "net8.0-windows7.0": {
+      "libplctag/1.5.2": {
+        "type": "package",
+        "dependencies": {
+          "libplctag.NativeImport": "1.0.41"
+        },
+        "compile": {
+          "lib/netstandard2.0/libplctag.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/libplctag.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "libplctag.NativeImport/1.0.41": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/libplctag.NativeImport.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/libplctag.NativeImport.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "MQTTnet/4.3.7.1207": {
         "type": "package",
         "compile": {
@@ -18,6 +47,36 @@
     }
   },
   "libraries": {
+    "libplctag/1.5.2": {
+      "sha512": "v16WtxKMr6YiPc/ws5C/MdhOvZgLrlDwJ1FQPB4PLrWNpBQXr8fUXaHI12rl3sNyJZ2ocB+zeSPUDFT8zK4pDA==",
+      "type": "package",
+      "path": "libplctag/1.5.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/libplctag.dll",
+        "lib/netstandard2.0/libplctag.xml",
+        "libplctag.1.5.2.nupkg.sha512",
+        "libplctag.nuspec",
+        "packageIcon.png"
+      ]
+    },
+    "libplctag.NativeImport/1.0.41": {
+      "sha512": "cm7TXwCMg4lALRtP/XJzxI4db9qYcRPB7kglPfDOqiNE1PQ4O/gOC5KPCwoGhIw07FBKvVDnl5sjbXS3iK2tEw==",
+      "type": "package",
+      "path": "libplctag.nativeimport/1.0.41",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/libplctag.NativeImport.dll",
+        "lib/netstandard2.0/libplctag.NativeImport.xml",
+        "libplctag.nativeimport.1.0.41.nupkg.sha512",
+        "libplctag.nativeimport.nuspec",
+        "packageIcon.png"
+      ]
+    },
     "MQTTnet/4.3.7.1207": {
       "sha512": "ah7aHXoedWp5m5a4zy2u4phOEVj0QFYzOb5tFKQeV8RRBrxp+1QREF4ymZuG8D+hzB2dhtrrG81WxTFv0PzOeQ==",
       "type": "package",
@@ -56,7 +115,8 @@
   },
   "projectFileDependencyGroups": {
     "net8.0-windows7.0": [
-      "MQTTnet >= 4.3.7.1207"
+      "MQTTnet >= 4.3.7.1207",
+      "libplctag >= 1.5.2"
     ]
   },
   "packageFolders": {
@@ -114,6 +174,10 @@
           "MQTTnet": {
             "target": "Package",
             "version": "[4.3.7.1207, )"
+          },
+          "libplctag": {
+            "target": "Package",
+            "version": "[1.5.2, )"
           }
         },
         "imports": [

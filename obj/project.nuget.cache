@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "TnEs8Ev/TJ4=",
+  "dgSpecHash": "d/ORqzJYK3I=",
   "success": true,
   "projectFilePath": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\jcollison\\.nuget\\packages\\libplctag\\1.5.2\\libplctag.1.5.2.nupkg.sha512",
+    "C:\\Users\\jcollison\\.nuget\\packages\\libplctag.nativeimport\\1.0.41\\libplctag.nativeimport.1.0.41.nupkg.sha512",
     "C:\\Users\\jcollison\\.nuget\\packages\\mqttnet\\4.3.7.1207\\mqttnet.4.3.7.1207.nupkg.sha512"
   ],
   "logs": []

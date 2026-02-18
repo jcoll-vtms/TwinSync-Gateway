@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "Line1Plc",
+    "IpAddress": "192.168.1.50",
+    "PlcType": "ControlLogix",
+    "Path": "1,0",
+    "TimeoutMs": 8000,
+    "PollIntervalMs": 200,
+    "Tags": [
+      { "Name": "Bool1", "TagName": "Program:MainProgram.MotorRunning", "DataType": "BOOL" },
+      { "Name": "Counter", "TagName": "Program:MainProgram.PartCount", "DataType": "DINT" }
+    ]
+  }
+]

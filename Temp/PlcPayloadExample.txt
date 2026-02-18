@@ -1,0 +1,8 @@
+{
+  "kind": "machineData",
+  "items": [
+    { "path": "Program:MainProgram.PartCount" },
+    { "path": "Program:MainProgram.MotorRunning" }
+  ],
+  "periodMs": 500
+}

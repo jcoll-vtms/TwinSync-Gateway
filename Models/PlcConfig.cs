@@ -13,6 +13,14 @@ namespace TwinSync_Gateway.Models
         // Chassis CPU slot (common default is 0)
         public int Slot { get; set; } = 0;
 
+        // libplctag connection hints (Phase 2)
+        // Example: "controllogix" or "compactlogix"
+        public string PlcType { get; set; } = "controllogix";
+
+        // libplctag "path" route (very commonly required).
+        // Default is derived from Slot as "1,{Slot}" e.g. "1,0"
+        public string? Path { get; set; }
+
         // Polling defaults / guardrails
         public int DefaultPeriodMs { get; set; } = 200;
         public int TimeoutMs { get; set; } = 1000;
@@ -22,5 +30,8 @@ namespace TwinSync_Gateway.Models
 
         // Optional stable ID
         public Guid Id { get; set; } = Guid.NewGuid();
+
+        public string EffectivePath
+            => string.IsNullOrWhiteSpace(Path) ? $"1,{Slot}" : Path!.Trim();
     }
 }
