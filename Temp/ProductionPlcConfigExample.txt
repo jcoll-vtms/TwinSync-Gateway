@@ -12,3 +12,23 @@
     ]
   }
 ]
+
+
+cpppo server example for Plcconfig.json:
+
+[
+  {
+    "Name": "Line1PlcSim",
+    "IpAddress": "127.0.0.1",
+    "PlcType": "ControlLogix",
+    "Path": "1,0",
+    "TimeoutMs": 8000,
+    "PollIntervalMs": 200,
+    "Tags": [
+      { "Name": "Bool1", "TagName": "MotorRunning", "DataType": "BOOL" },
+      { "Name": "Counter", "TagName": "PartCount", "DataType": "DINT" }
+    ]
+  }
+]
+
+python -m cpppo.server.enip --address 0.0.0.0:44818 MotorRunning=BOOL PartCount=DINT

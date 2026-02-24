@@ -30,7 +30,8 @@ namespace TwinSync_Gateway.ViewModels
         private readonly List<PlcSession> _plcSessions = new();
         private readonly Dictionary<DeviceKey, DateTimeOffset> _plcLastFrameAt = new();
 
-        private bool _useSimPlc = false; // flip to false for real PLC
+        // For testing: if true, PLC sessions use the SimPlcTransport instead of LibPlcTagTransport.
+        private bool _useSimPlc = true;
 
         // Central ingress routing registry (FULL DeviceKey)
         private readonly Dictionary<DeviceKey, IPlanTarget> _targets = new();
@@ -293,7 +294,7 @@ namespace TwinSync_Gateway.ViewModels
                         // For disconnected robots, we still publish them as discoverable devices
                         // but they may not have an active session/key.
                         var deviceId = r.Session?.Key.DeviceId ?? r.Name;
-                        var deviceType = r.Session?.Key.DeviceType ?? "fanuc-karel";
+                        var deviceType = r.Session?.Key.DeviceType ?? "robot-fanuc";
 
                         long? lastDataMs = r.LastTelemetryAt == default
                             ? (long?)null

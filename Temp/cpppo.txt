@@ -1,0 +1,56 @@
+python -m cpppo.server.enip --address 0.0.0.0:44818 "Program:MainProgram.MotorRunning=BOOL" "Program:MainProgram.PartCount=DINT"
+
+
+python -m cpppo.server.enip "Program:MainProgram.MotorSpeed=DINT=1500" "Program:MainProgram.Counter=DINT=42" "Program:MainProgram.Temperature=REAL=23.5" "Program:MainProgram.MotorRunning=BOOL=1"
+
+
+
+import time
+import threading
+from cpppo.server.enip import server
+
+# Use the *exact* tag names TwinSync/libplctag will request
+TAG_MOTOR_RUNNING = "Program:MainProgram.MotorRunning"
+TAG_PART_COUNT    = "Program:MainProgram.PartCount"
+TAG_MOTOR_SPEED   = "Program:MainProgram.MotorSpeed"
+TAG_TEMPERATURE   = "Program:MainProgram.Temperature"
+
+tags = {
+    TAG_MOTOR_RUNNING: True,   # BOOL
+    TAG_PART_COUNT: 0,         # DINT
+    TAG_MOTOR_SPEED: 1500,     # DINT
+    TAG_TEMPERATURE: 22.5,     # REAL
+}
+
+def update_tags():
+    while True:
+        # Increment DINT
+        tags[TAG_PART_COUNT] += 1
+
+        # Nudge REAL
+        tags[TAG_TEMPERATURE] = float(tags[TAG_TEMPERATURE]) + 0.1
+
+        # Optional: toggle BOOL every 5 counts
+        if tags[TAG_PART_COUNT] % 5 == 0:
+            tags[TAG_MOTOR_RUNNING] = not tags[TAG_MOTOR_RUNNING]
+
+        time.sleep(1)
+
+if __name__ == "__main__":
+    threading.Thread(target=update_tags, daemon=True).start()
+
+    # Start the EtherNet/IP server
+    server.main(tags=tags, address=("0.0.0.0", 44818))
+
+
+
+    python mock_plc.py
+
+
+    You can simulate:
+
+Scenario	How
+PLC power loss	Kill the Python process
+Slow PLC	Add sleep delays
+Invalid tag	Request tag not defined
+Timeout	Block response thread

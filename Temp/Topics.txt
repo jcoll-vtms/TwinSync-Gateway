@@ -31,11 +31,27 @@
         twinsync/default/TwinSyncGateway-001/data/plc-ab/SimPlc1
 
         Robot client topic post example:
-        twinsync/default/TwinSyncGateway-001/plan/fanuc-karel/Robot1/User1
+        twinsync/default/TwinSyncGateway-001/plan/robot-fanuc/Robot1/User1
 
         Payload
         {"di":[102,103,104]}
 
 
         Robot client topic subscribe example:
-        twinsync/default/TwinSyncGateway-001/data/fanuc-karel/Robot1
+        twinsync/default/TwinSyncGateway-001/data/robot-fanuc/Robot1
+
+        cppo subscribe:
+        twinsync/default/TwinSyncGateway-001/data/plc-ab/Line1PlcSim
+
+        cppo publish:
+        twinsync/default/TwinSyncGateway-001/plan/plc-ab/Line1PlcSim/User1
+
+        payload:
+        {
+          "kind": "machineData",
+          "items": [
+            { "path": "Program:MainProgram.PartCount" },
+            { "path": "Program:MainProgram.MotorRunning" }
+          ],
+          "periodMs": 500
+        }

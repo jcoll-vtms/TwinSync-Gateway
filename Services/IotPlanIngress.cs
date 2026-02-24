@@ -29,10 +29,6 @@ namespace TwinSync_Gateway.Services
         private readonly Func<DeviceKey, IPlanTarget?> _getTargetByKey;
         private readonly IotMqttConnection _mqtt;
 
-        // IMPORTANT: must match RobotSession.Key.DeviceType for legacy tenant topics
-        // because tenant-legacy topics don't include deviceType in the path.
-        private const string LegacyDefaultDeviceType = "fanuc-karel";
-
         public event Action<string>? Log;
 
         public IotPlanIngress(

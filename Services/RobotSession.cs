@@ -116,7 +116,7 @@ namespace TwinSync_Gateway.Services
                 tenantId,
                 gatewayId,
                 robotName,
-                "fanuc-karel");
+                "robot-fanuc");
         }
 
         // ---- IPlanTarget ----
