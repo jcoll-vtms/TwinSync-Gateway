@@ -1,12 +1,53 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\downloads\\twinsync gateway_updated_v2\\twinsync gateway\\temp\\robotpayloadexample.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:temp\\robotpayloadexample.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|c:\\users\\jcollison\\downloads\\twinsync gateway_updated_v2\\twinsync gateway\\temp\\plcpayloadexample.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{5404B709-7457-4E30-814B-C33B7FBD00E0}|TwinSync Gateway.csproj|solutionrelative:temp\\plcpayloadexample.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RobotPayloadExample.txt",
+              "DocumentMoniker": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\Temp\\RobotPayloadExample.txt",
+              "RelativeDocumentMoniker": "Temp\\RobotPayloadExample.txt",
+              "ToolTip": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\Temp\\RobotPayloadExample.txt",
+              "RelativeToolTip": "Temp\\RobotPayloadExample.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-02-24T01:49:00.408Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PlcPayloadExample.txt",
+              "DocumentMoniker": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\Temp\\PlcPayloadExample.txt",
+              "RelativeDocumentMoniker": "Temp\\PlcPayloadExample.txt",
+              "ToolTip": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\Temp\\PlcPayloadExample.txt",
+              "RelativeToolTip": "Temp\\PlcPayloadExample.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-02-24T01:05:06.282Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
