@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj": {}
+    "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\TwinSync Gateway.csproj": {}
   },
   "projects": {
-    "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj": {
+    "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\TwinSync Gateway.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj",
+        "projectUniqueName": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\TwinSync Gateway.csproj",
         "projectName": "TwinSync Gateway",
-        "projectPath": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\TwinSync Gateway.csproj",
+        "projectPath": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\TwinSync Gateway.csproj",
         "packagesPath": "C:\\Users\\jcollison\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\obj\\",
+        "outputPath": "C:\\Users\\jcollison\\Downloads\\TwinSync Gateway_UPDATED_v2\\TwinSync Gateway\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",

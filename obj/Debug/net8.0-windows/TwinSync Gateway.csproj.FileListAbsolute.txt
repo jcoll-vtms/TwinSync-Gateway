@@ -1,27 +1,26 @@
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.csproj.AssemblyReference.cache
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\MainWindow.g.cs
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\App.g.cs
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway_MarkupCompile.cache
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway_MarkupCompile.lref
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.exe
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.deps.json
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.runtimeconfig.json
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.pdb
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\MQTTnet.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\MainWindow.baml
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.g.resources
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.AssemblyInfoInputs.cache
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.AssemblyInfo.cs
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.csproj.CoreCompileInputs.cache
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.sourcelink.json
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync.69CC62DC.Up2Date
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\refint\TwinSync Gateway.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.pdb
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.genruntimeconfig.cache
-C:\Users\jcollison\source\repos\TwinSync Gateway\obj\Debug\net8.0-windows\ref\TwinSync Gateway.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\libplctag.dll
-C:\Users\jcollison\source\repos\TwinSync Gateway\bin\Debug\net8.0-windows\libplctag.NativeImport.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.exe
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.deps.json
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.runtimeconfig.json
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\TwinSync Gateway.pdb
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\libplctag.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\libplctag.NativeImport.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\bin\Debug\net8.0-windows\MQTTnet.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.csproj.AssemblyReference.cache
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\MainWindow.g.cs
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\App.g.cs
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway_MarkupCompile.cache
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway_MarkupCompile.lref
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\MainWindow.baml
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.g.resources
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.AssemblyInfoInputs.cache
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.AssemblyInfo.cs
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.csproj.CoreCompileInputs.cache
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync.69CC62DC.Up2Date
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\refint\TwinSync Gateway.dll
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.pdb
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\TwinSync Gateway.genruntimeconfig.cache
+C:\Users\jcollison\Downloads\TwinSync Gateway_UPDATED_v2\TwinSync Gateway\obj\Debug\net8.0-windows\ref\TwinSync Gateway.dll

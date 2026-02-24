@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -587,7 +587,10 @@ namespace TwinSync_Gateway.ViewModels
             s.SetUserPlan("userA", new TelemetryPlan(
                 DI: new[] { 105 },
                 GI: new[] { 1 },
-                GO: new[] { 1 }
+                GO: new[] { 1 },
+                DO: Array.Empty<int>(),
+                R: Array.Empty<int>(),
+                VAR: Array.Empty<string>()
             ));
         }
 
@@ -599,7 +602,10 @@ namespace TwinSync_Gateway.ViewModels
             s.SetUserPlan("userB", new TelemetryPlan(
                 DI: new[] { 113, 105 },
                 GI: new[] { 2 },
-                GO: Array.Empty<int>()
+                GO: Array.Empty<int>(),
+                DO: Array.Empty<int>(),
+                R: Array.Empty<int>(),
+                VAR: Array.Empty<string>()
             ));
         }
 

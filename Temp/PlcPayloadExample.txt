@@ -6,3 +6,24 @@
   ],
   "periodMs": 500
 }
+
+
+{
+  "pubSeq": 14353,
+  "ts": 1771895224016,
+  "frameSeq": 122,
+  "deviceType": "plc-ab",
+  "deviceId": "Line1PlcSim",
+  "payload": {
+    "values": {
+      "Program:MainProgram.MotorRunning": {
+        "k": "Bool",
+        "v": true
+      },
+      "Program:MainProgram.PartCount": {
+        "k": "String",
+        "v": "sim:Program:MainProgram.PartCount:122"
+      }
+    }
+  }
+}

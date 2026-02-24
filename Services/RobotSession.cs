@@ -1,4 +1,4 @@
-﻿// RobotSession.cs
+// RobotSession.cs
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -46,6 +46,9 @@ namespace TwinSync_Gateway.Services
         private const int MaxDi = 10;
         private const int MaxGi = 10;
         private const int MaxGo = 10;
+        private const int MaxDo = 10;
+        private const int MaxR  = 10;
+        private const int MaxVar = 10;
 
         private readonly RobotConfig _config;
         private readonly Func<IRobotTransport> _transportFactory;
@@ -382,6 +385,17 @@ namespace TwinSync_Gateway.Services
                     .ToArray();
             }
 
+            static string[] UnionSortedCappedStrings(IEnumerable<string> all, int cap)
+            {
+                return all
+                    .Select(s => (s ?? string.Empty).Trim())
+                    .Where(s => s.Length > 0)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(s => s, StringComparer.Ordinal)
+                    .Take(cap)
+                    .ToArray();
+            }
+
             List<TelemetryPlan> plans;
             lock (_userPlansLock)
                 plans = _userPlans.Values.Select(s => s.Plan).ToList();
@@ -390,7 +404,11 @@ namespace TwinSync_Gateway.Services
             var gi = UnionSortedCapped(plans.SelectMany(p => p.GI ?? Array.Empty<int>()), MaxGi);
             var go = UnionSortedCapped(plans.SelectMany(p => p.GO ?? Array.Empty<int>()), MaxGo);
 
-            return new TelemetryPlan(di, gi, go);
+            var dO = UnionSortedCapped(plans.SelectMany(p => p.DO ?? Array.Empty<int>()), MaxDo);
+            var r  = UnionSortedCapped(plans.SelectMany(p => p.R ?? Array.Empty<int>()), MaxR);
+            var vars = UnionSortedCappedStrings(plans.SelectMany(p => p.VAR ?? Array.Empty<string>()), MaxVar);
+
+            return new TelemetryPlan(di, gi, go, dO, r, vars);
         }
 
         private static bool PlanEquals(TelemetryPlan a, TelemetryPlan b)
@@ -398,7 +416,17 @@ namespace TwinSync_Gateway.Services
             static bool SeqEq(IReadOnlyCollection<int> x, IReadOnlyCollection<int> y)
                 => x.Count == y.Count && x.OrderBy(v => v).SequenceEqual(y.OrderBy(v => v));
 
-            return SeqEq(a.DI, b.DI) && SeqEq(a.GI, b.GI) && SeqEq(a.GO, b.GO);
+            static bool SeqEqStr(IReadOnlyCollection<string> x, IReadOnlyCollection<string> y)
+                => x.Count == y.Count &&
+                   x.Select(s => (s ?? string.Empty).Trim()).OrderBy(v => v, StringComparer.Ordinal)
+                    .SequenceEqual(y.Select(s => (s ?? string.Empty).Trim()).OrderBy(v => v, StringComparer.Ordinal));
+
+            return SeqEq(a.DI, b.DI) &&
+                   SeqEq(a.GI, b.GI) &&
+                   SeqEq(a.GO, b.GO) &&
+                   SeqEq(a.DO, b.DO) &&
+                   SeqEq(a.R, b.R) &&
+                   SeqEqStr(a.VAR, b.VAR);
         }
 
         private async Task ApplyPlanIfChangedAsync(CancellationToken ct)
@@ -420,10 +448,13 @@ namespace TwinSync_Gateway.Services
                 await SendPlanAsync(karel, "PLAN_DI", desired.DI, ct).ConfigureAwait(false);
                 await SendPlanAsync(karel, "PLAN_GI", desired.GI, ct).ConfigureAwait(false);
                 await SendPlanAsync(karel, "PLAN_GO", desired.GO, ct).ConfigureAwait(false);
+                await SendPlanAsync(karel, "PLAN_DO", desired.DO, ct).ConfigureAwait(false);
+                await SendPlanAsync(karel, "PLAN_R",  desired.R,  ct).ConfigureAwait(false);
+                await SendPlanVarsAsync(karel, desired.VAR, ct).ConfigureAwait(false);
 
                 _appliedPlan = desired;
 
-                Log?.Invoke($"Applied plan: DI[{desired.DI.Count}] GI[{desired.GI.Count}] GO[{desired.GO.Count}]");
+                Log?.Invoke($"Applied plan: DI[{desired.DI.Count}] GI[{desired.GI.Count}] GO[{desired.GO.Count}] DO[{desired.DO.Count}] R[{desired.R.Count}] VAR[{desired.VAR.Count}]");
             }
             finally
             {
@@ -440,6 +471,25 @@ namespace TwinSync_Gateway.Services
 
             if (!resp.Equals("OK", StringComparison.OrdinalIgnoreCase))
                 throw new IOException($"Robot rejected {prefix}: '{resp}'");
+        }
+
+        private static async Task SendPlanVarsAsync(KarelTransport karel, IReadOnlyCollection<string> vars, CancellationToken ct)
+        {
+            // KAREL side expects: PLAN_VAR=name1,name2,... (no quoting/escaping)
+            var cleaned = vars
+                .Select(v => (v ?? string.Empty).Trim())
+                .Where(v => v.Length > 0)
+                .ToArray();
+
+            var payload = cleaned.Length == 0
+                ? "PLAN_VAR="
+                : $"PLAN_VAR={string.Join(",", cleaned)}";
+
+            await karel.SendCommandAsync(payload, ct).ConfigureAwait(false);
+            var resp = (await karel.ReadLineAsync(ct).ConfigureAwait(false)).Trim();
+
+            if (!resp.Equals("OK", StringComparison.OrdinalIgnoreCase))
+                throw new IOException($"Robot rejected PLAN_VAR: '{resp}'");
         }
 
         private async Task StopStreamingInternalAsync()
@@ -536,6 +586,9 @@ namespace TwinSync_Gateway.Services
             Dictionary<int, int>? di = null;
             Dictionary<int, int>? gi = null;
             Dictionary<int, int>? go = null;
+            Dictionary<int, int>? dO = null;
+            Dictionary<int, TelemetryRegisterValue>? r = null;
+            Dictionary<string, string>? vars = null;
 
             while (true)
             {
@@ -555,7 +608,10 @@ namespace TwinSync_Gateway.Services
                         JointsDeg: joints,
                         DI: di,
                         GI: gi,
-                        GO: go
+                        GO: go,
+                        DO: dO,
+                        R: r,
+                        VAR: vars
                     );
                 }
 
@@ -597,6 +653,27 @@ namespace TwinSync_Gateway.Services
                     ParseIdValueListInto(line.AsSpan(3), go);
                     continue;
                 }
+
+                if (line.StartsWith("DO=", StringComparison.OrdinalIgnoreCase))
+                {
+                    dO ??= new Dictionary<int, int>();
+                    ParseIdValueListInto(line.AsSpan(3), dO);
+                    continue;
+                }
+
+                if (line.StartsWith("R=", StringComparison.OrdinalIgnoreCase))
+                {
+                    r ??= new Dictionary<int, TelemetryRegisterValue>();
+                    ParseRegisterListInto(line.AsSpan(2), r);
+                    continue;
+                }
+
+                if (line.StartsWith("VAR=", StringComparison.OrdinalIgnoreCase))
+                {
+                    vars ??= new Dictionary<string, string>(StringComparer.Ordinal);
+                    ParseVarListInto(line.AsSpan(4), vars);
+                    continue;
+                }
             }
         }
 
@@ -628,6 +705,75 @@ namespace TwinSync_Gateway.Services
                     continue;
 
                 dest[id] = val;
+            }
+        }
+
+        private static void ParseRegisterListInto(ReadOnlySpan<char> s, Dictionary<int, TelemetryRegisterValue> dest)
+        {
+            // Format: "12:123|123.000,5:0|0.000" or "12:ERR" (ignored)
+            if (s.IsEmpty) return;
+
+            while (!s.IsEmpty)
+            {
+                int comma = s.IndexOf(',');
+                ReadOnlySpan<char> token = comma >= 0 ? s[..comma] : s;
+                token = token.Trim();
+
+                if (comma >= 0) s = s[(comma + 1)..];
+                else s = ReadOnlySpan<char>.Empty;
+
+                if (token.IsEmpty) continue;
+
+                int colon = token.IndexOf(':');
+                if (colon <= 0 || colon >= token.Length - 1) continue;
+
+                var idSpan = token[..colon].Trim();
+                var rest = token[(colon + 1)..].Trim();
+
+                if (!int.TryParse(idSpan, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
+                    continue;
+
+                // rest is either "ERR" or "int|real"
+                if (rest.Equals("ERR".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                int pipe = rest.IndexOf('|');
+                if (pipe <= 0 || pipe >= rest.Length - 1) continue;
+
+                var intSpan = rest[..pipe].Trim();
+                var realSpan = rest[(pipe + 1)..].Trim();
+
+                int.TryParse(intSpan, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iVal);
+                double.TryParse(realSpan, NumberStyles.Float, CultureInfo.InvariantCulture, out var rVal);
+
+                dest[id] = new TelemetryRegisterValue(iVal, rVal);
+            }
+        }
+
+        private static void ParseVarListInto(ReadOnlySpan<char> s, Dictionary<string, string> dest)
+        {
+            // Format: "$FOO:R:12.500,$BAR:ERR"  (value stored as "R:12.500" or "ERR")
+            if (s.IsEmpty) return;
+
+            while (!s.IsEmpty)
+            {
+                int comma = s.IndexOf(',');
+                ReadOnlySpan<char> token = comma >= 0 ? s[..comma] : s;
+                token = token.Trim();
+
+                if (comma >= 0) s = s[(comma + 1)..];
+                else s = ReadOnlySpan<char>.Empty;
+
+                if (token.IsEmpty) continue;
+
+                int colon = token.IndexOf(':');
+                if (colon <= 0 || colon >= token.Length - 1) continue;
+
+                var nameSpan = token[..colon].Trim();
+                var rest = token[(colon + 1)..].Trim();
+                if (nameSpan.IsEmpty) continue;
+
+                dest[nameSpan.ToString()] = rest.ToString();
             }
         }
 

@@ -1,4 +1,4 @@
-﻿// =====================================================
+// =====================================================
 // COMPLETE REPLACEMENT: IotDataEgress.cs
 // =====================================================
 using MQTTnet.Protocol;
@@ -168,7 +168,10 @@ namespace TwinSync_Gateway.Services
                     j = tf.JointsDeg,
                     di = tf.DI != null ? ToStringKeyDict(tf.DI) : null,
                     gi = tf.GI != null ? ToStringKeyDict(tf.GI) : null,
-                    go = tf.GO != null ? ToStringKeyDict(tf.GO) : null
+                    go = tf.GO != null ? ToStringKeyDict(tf.GO) : null,
+                    dO = tf.DO != null ? ToStringKeyDict(tf.DO) : null,
+                    r = tf.R != null ? ToStringKeyRegisterDict(tf.R) : null,
+                    v = tf.VAR != null ? new Dictionary<string, string>(tf.VAR) : null
                 },
                 PlcFrame pf => new PlcPayload
                 {
@@ -207,6 +210,17 @@ namespace TwinSync_Gateway.Services
             var d = new Dictionary<string, int>(src.Count);
             foreach (var kv in src)
                 d[kv.Key.ToString()] = kv.Value;
+            return d;
+        }
+
+        private static Dictionary<string, object> ToStringKeyRegisterDict(IReadOnlyDictionary<int, TelemetryRegisterValue> src)
+        {
+            // JSON-friendly: { "1": { "i": 123, "r": 123.0 }, ... }
+            var d = new Dictionary<string, object>(src.Count);
+            foreach (var kv in src)
+            {
+                d[kv.Key.ToString()] = new { i = kv.Value.IntVal, r = kv.Value.RealVal };
+            }
             return d;
         }
 
@@ -263,6 +277,9 @@ namespace TwinSync_Gateway.Services
             public Dictionary<string, int>? di { get; set; }
             public Dictionary<string, int>? gi { get; set; }
             public Dictionary<string, int>? go { get; set; }
+            public Dictionary<string, int>? dO { get; set; }
+            public Dictionary<string, object>? r { get; set; }
+            public Dictionary<string, string>? v { get; set; }
         }
 
         private sealed class PlcPayload

@@ -1,4 +1,4 @@
-﻿// =====================================================
+// =====================================================
 // COMPLETE REPLACEMENT: IotPlanIngress.cs
 // =====================================================
 using MQTTnet;
@@ -162,14 +162,17 @@ namespace TwinSync_Gateway.Services
                 var plan = new TelemetryPlan(
                     DI: env.di ?? Array.Empty<int>(),
                     GI: env.gi ?? Array.Empty<int>(),
-                    GO: env.go ?? Array.Empty<int>());
+                    GO: env.go ?? Array.Empty<int>(),
+                    DO: env.@do ?? Array.Empty<int>(),
+                    R: env.r ?? Array.Empty<int>(),
+                    VAR: env.@var ?? Array.Empty<string>());
 
                 // Your IPlanTarget already contains ApplyTelemetryPlan (robot only).
                 // PLC targets can no-op or ignore, but ideally they won't receive telemetry topics.
                 target.ApplyTelemetryPlan(userId, plan, env.periodMs);
 
                 Log?.Invoke(
-                    $"Telemetry plan user='{userId}' key='{key}' DI={Count(env.di)} GI={Count(env.gi)} GO={Count(env.go)} periodMs={env.periodMs?.ToString() ?? "null"}");
+                    $"Telemetry plan user='{userId}' key='{key}' DI={Count(env.di)} GI={Count(env.gi)} GO={Count(env.go)} DO={Count(env.@do)} R={Count(env.r)} VAR={Count(env.@var)} periodMs={env.periodMs?.ToString() ?? "null"}");
                 return;
             }
 
@@ -197,6 +200,7 @@ namespace TwinSync_Gateway.Services
         }
 
         private static int Count(int[]? x) => x?.Length ?? 0;
+        private static int Count(string[]? x) => x?.Length ?? 0;
 
         private sealed class PlanEnvelope
         {
@@ -204,6 +208,9 @@ namespace TwinSync_Gateway.Services
             public int[]? di { get; set; }
             public int[]? gi { get; set; }
             public int[]? go { get; set; }
+                        public int[]? @do { get; set; } // Digital Outputs (DO)
+            public int[]? r { get; set; }   // Numeric Registers (R)
+            public string[]? @var { get; set; } // Variables (VAR)
             public int? periodMs { get; set; }
 
             // machineData:
