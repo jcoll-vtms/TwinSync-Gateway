@@ -387,6 +387,11 @@ namespace TwinSync_Gateway.ViewModels
             // Freeze identity at connect time
             var key = session.Key;
 
+            session.PublishAllowedChanged += allowed =>
+            {
+                try { _iotEgress?.SetPublishAllowed(key, allowed); } catch { }
+            };
+
             // Register for ingress routing (FULL key)
             _targets[key] = session;
 
@@ -433,17 +438,19 @@ namespace TwinSync_Gateway.ViewModels
                     RemoveUserBCommand.RaiseCanExecuteChanged();
                 });
 
-                // Hardening: any disconnect/error disables publish + clears cache
                 if (status == RobotStatus.Disconnected || status == RobotStatus.Error)
                 {
                     try { _iotEgress?.SetPublishAllowed(key, false); } catch { }
                 }
 
-                // When robot session ends, remove it from ingress routing registry
-                if (status == RobotStatus.Disconnected || status == RobotStatus.Error)
-                {
-                    _targets.Remove(key);
-                }
+                // IMPORTANT: do NOT remove from _targets on Disconnected/Error.
+                // RobotSession auto-reconnects and must keep receiving hb/plan/leave
+                // so leases survive power cycles.
+                // _targets is removed only on explicit teardown (DisconnectSelected/RemoveSelectedRobot).
+                //if (status == RobotStatus.Disconnected || status == RobotStatus.Error)
+                //{
+                //    _targets.Remove(key);
+                //}
 
                 _ = PublishDevicesRosterAsync();
             };
