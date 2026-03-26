@@ -40,7 +40,7 @@
               "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
               "ToolTip": "C:\\Users\\jcollison\\source\\repos\\TwinSync Gateway\\ViewModels\\MainViewModel.cs",
               "RelativeToolTip": "ViewModels\\MainViewModel.cs",
-              "ViewState": "AgIAAK0BAAAAAAAAAAAnwMQBAAATAAAAAAAAAA==",
+              "ViewState": "AgIAAGcBAAAAAAAAAAAnwMYBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-01T21:33:50.089Z",
               "EditorCaption": ""
@@ -55,8 +55,7 @@
               "RelativeToolTip": "Services\\IotPlanIngress.cs",
               "ViewState": "AgIAAGsAAAAAAAAAAAAwwHoAAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-01T21:30:04.174Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-03-01T21:30:04.174Z"
             },
             {
               "$type": "Document",
@@ -68,8 +67,7 @@
               "RelativeToolTip": "Services\\RobotSession.cs",
               "ViewState": "AgIAAEoDAAAAAAAAAAAmwGEDAAA6AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-01T21:28:21.897Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-03-01T21:28:21.897Z"
             },
             {
               "$type": "Document",
@@ -81,8 +79,7 @@
               "RelativeToolTip": "Temp\\RobotPayloadExample.txt",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2026-02-24T01:49:00.408Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-24T01:49:00.408Z"
             },
             {
               "$type": "Document",
